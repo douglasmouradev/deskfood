@@ -1,0 +1,300 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Services;
+
+use App\Database;
+use App\Helpers\Env;
+use App\Helpers\Logger;
+use PDO;
+use Throwable;
+
+/**
+ * Criação e transição de estados de pedidos com regras de negócio centrais.
+ */
+final class OrderService
+{
+    /**
+     * Gera número interno de pedido único por unidade.
+     *
+     * @throws \RuntimeException Quando não for possível gerar após várias tentativas
+     */
+    public static function generateOrderNumber(PDO $pdo, int $unitId): string
+    {
+        for ($i = 0; $i < 8; $i++) {
+            $n = date('ymd') . str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+            $st = $pdo->prepare('SELECT id FROM orders WHERE unit_id = :u AND order_number = :n LIMIT 1');
+            $st->execute(['u' => $unitId, 'n' => $n]);
+            if ($st->fetch() === false) {
+                return $n;
+            }
+        }
+
+        throw new \RuntimeException('Não foi possível gerar número de pedido.');
+    }
+
+    /**
+     * Cria pedido completo a partir do carrinho em sessão e dados de entrega/pagamento.
+     *
+     * @param array<string, mixed> $cart Estrutura `unit_id` + `items`
+     * @param array<string, mixed> $delivery Campos de endereço e observações
+     * @param array<string, mixed> $payment payment_method, on_delivery_type, change_for
+     * @param array<string, string> $customer name, phone (exibição)
+     * @return array{order_id:int,tracking_token:string}
+     */
+    public static function createFromCart(int $userId, array $cart, array $delivery, array $payment, array $customer): array
+    {
+        $pdo = Database::pdo();
+        $unitId = (int) ($cart['unit_id'] ?? 0);
+        if ($unitId <= 0 || empty($cart['items']) || !is_array($cart['items'])) {
+            throw new \InvalidArgumentException('Carrinho inválido.');
+        }
+
+        $unit = $pdo->prepare('SELECT id, delivery_fee FROM units WHERE id = :id AND is_active = 1 AND deleted_at IS NULL LIMIT 1');
+        $unit->execute(['id' => $unitId]);
+        $u = $unit->fetch(PDO::FETCH_ASSOC);
+        if ($u === false) {
+            throw new \RuntimeException('Unidade indisponível.');
+        }
+
+        $deliveryFee = (float) $u['delivery_fee'];
+        $lines = self::buildLines($pdo, $unitId, $cart['items']);
+        $subtotal = 0.0;
+        foreach ($lines as $ln) {
+            $subtotal += $ln['line_total'];
+        }
+
+        $total = $subtotal + $deliveryFee;
+        $method = (string) ($payment['payment_method'] ?? '');
+        if (!in_array($method, ['pix', 'on_delivery'], true)) {
+            throw new \InvalidArgumentException('Forma de pagamento inválida.');
+        }
+
+        $paymentStatus = $method === 'pix' ? 'pendente' : 'pendente_entrega';
+        $onType = null;
+        $changeFor = null;
+        if ($method === 'on_delivery') {
+            $onType = (string) ($payment['on_delivery_type'] ?? 'cash');
+            if (!in_array($onType, ['cash', 'card'], true)) {
+                throw new \InvalidArgumentException('Tipo de pagamento na entrega inválido.');
+            }
+            if ($onType === 'cash') {
+                $changeFor = isset($payment['change_for']) ? (float) $payment['change_for'] : null;
+            }
+        }
+
+        $orderNumber = self::generateOrderNumber($pdo, $unitId);
+        $tracking = bin2hex(random_bytes(16));
+
+        $pdo->beginTransaction();
+        try {
+            $ins = $pdo->prepare(
+                'INSERT INTO orders (
+                    unit_id, user_id, order_number, tracking_token, status,
+                    payment_method, payment_status, on_delivery_type, change_for,
+                    customer_name, customer_phone,
+                    delivery_street, delivery_number, delivery_complement,
+                    delivery_neighborhood, delivery_city, delivery_state, delivery_zip,
+                    notes, subtotal, delivery_fee, total,
+                    created_at, updated_at
+                ) VALUES (
+                    :uid,:user_id,:onum,:track,:st,
+                    :pm,:ps,:odt,:cf,
+                    :cname,:cphone,
+                    :dst,:dnum,:dcomp,:dnei,:dcity,:dstate,:dzip,
+                    :notes,:sub,:dfee,:tot,
+                    NOW(),NOW()
+                )'
+            );
+
+            $ins->execute([
+                'uid' => $unitId,
+                'user_id' => $userId,
+                'onum' => $orderNumber,
+                'track' => $tracking,
+                'st' => 'pendente',
+                'pm' => $method,
+                'ps' => $paymentStatus,
+                'odt' => $onType,
+                'cf' => $changeFor,
+                'cname' => $customer['name'],
+                'cphone' => $customer['phone'],
+                'dst' => $delivery['street'],
+                'dnum' => $delivery['number'],
+                'dcomp' => $delivery['complement'] ?? null,
+                'dnei' => $delivery['neighborhood'],
+                'dcity' => $delivery['city'],
+                'dstate' => $delivery['state'],
+                'dzip' => $delivery['zip'],
+                'notes' => $delivery['notes'] ?? null,
+                'sub' => round($subtotal, 2),
+                'dfee' => round($deliveryFee, 2),
+                'tot' => round($total, 2),
+            ]);
+
+            $orderId = (int) $pdo->lastInsertId();
+
+            $itemStmt = $pdo->prepare(
+                'INSERT INTO order_items (order_id, product_id, product_name, quantity, unit_price, line_total, created_at, updated_at)
+                 VALUES (:oid,:pid,:pname,:qty,:up,:lt,NOW(),NOW())'
+            );
+            $addonStmt = $pdo->prepare(
+                'INSERT INTO order_item_addons (order_item_id, product_addon_id, addon_name, addon_price, created_at, updated_at)
+                 VALUES (:oiid,:paid,:an,:ap,NOW(),NOW())'
+            );
+
+            foreach ($lines as $line) {
+                $itemStmt->execute([
+                    'oid' => $orderId,
+                    'pid' => $line['product_id'],
+                    'pname' => $line['product_name'],
+                    'qty' => $line['qty'],
+                    'up' => $line['unit_price'],
+                    'lt' => $line['line_total'],
+                ]);
+                $oiId = (int) $pdo->lastInsertId();
+                foreach ($line['addons'] as $ad) {
+                    $addonStmt->execute([
+                        'oiid' => $oiId,
+                        'paid' => $ad['id'],
+                        'an' => $ad['name'],
+                        'ap' => $ad['price'],
+                    ]);
+                }
+            }
+
+            $payIns = $pdo->prepare(
+                'INSERT INTO payments (order_id, type, status, amount, meta, created_at, updated_at)
+                 VALUES (:oid,:type,:st,:amt,:meta,NOW(),NOW())'
+            );
+            $payIns->execute([
+                'oid' => $orderId,
+                'type' => $method,
+                'st' => 'pendente',
+                'amt' => round($total, 2),
+                'meta' => json_encode(['source' => 'checkout'], JSON_UNESCAPED_UNICODE),
+            ]);
+            $paymentId = (int) $pdo->lastInsertId();
+
+            if ($method === 'pix') {
+                $pix = PixService::createForPayment($paymentId, (float) round($total, 2));
+                $pixIns = $pdo->prepare(
+                    'INSERT INTO pix_transactions (payment_id, external_id, qr_code_payload, copy_paste, expires_at, status, created_at, updated_at)
+                     VALUES (:pid,:ext,:qr,:cp,:exp,:st,NOW(),NOW())'
+                );
+                $pixIns->execute([
+                    'pid' => $paymentId,
+                    'ext' => $pix['external_id'],
+                    'qr' => $pix['qr_payload'],
+                    'cp' => $pix['copy_paste'],
+                    'exp' => $pix['expires_at'],
+                    'st' => 'criado',
+                ]);
+            }
+
+            $log = $pdo->prepare(
+                'INSERT INTO order_status_logs (order_id, status, note, actor_type, created_at)
+                 VALUES (:oid,:st,:n,:a,NOW())'
+            );
+            $log->execute(['oid' => $orderId, 'st' => 'pendente', 'n' => 'Pedido criado', 'a' => 'customer']);
+
+            $pdo->commit();
+
+            self::notifyStatusSms($orderId, 'pendente');
+
+            return ['order_id' => $orderId, 'tracking_token' => $tracking, 'payment_id' => $paymentId];
+        } catch (Throwable $e) {
+            $pdo->rollBack();
+            Logger::log('error', 'Falha ao criar pedido', ['e' => $e->getMessage()]);
+            throw $e;
+        }
+    }
+
+    /**
+     * Monta linhas com preços reais vindos do banco para evitar manipulação no cliente.
+     *
+     * @param list<array<string,mixed>> $items Itens do carrinho em sessão
+     * @return list<array<string,mixed>>
+     */
+    private static function buildLines(PDO $pdo, int $unitId, array $items): array
+    {
+        $lines = [];
+        $pStmt = $pdo->prepare(
+            'SELECT id, name, price FROM products WHERE id = :id AND unit_id = :u AND status = "active" AND deleted_at IS NULL LIMIT 1'
+        );
+        $aStmt = $pdo->prepare(
+            'SELECT id, name, price FROM product_addons WHERE id = :id AND product_id = :pid AND is_active = 1 AND deleted_at IS NULL LIMIT 1'
+        );
+
+        foreach ($items as $it) {
+            $pid = (int) ($it['product_id'] ?? 0);
+            $qty = max(1, (int) ($it['qty'] ?? 1));
+            $pStmt->execute(['id' => $pid, 'u' => $unitId]);
+            $p = $pStmt->fetch(PDO::FETCH_ASSOC);
+            if ($p === false) {
+                continue;
+            }
+
+            $unitPrice = (float) $p['price'];
+            $addons = [];
+            $addonsTotal = 0.0;
+            foreach ((array) ($it['addons'] ?? []) as $aid) {
+                $aid = (int) $aid;
+                if ($aid <= 0) {
+                    continue;
+                }
+                $aStmt->execute(['id' => $aid, 'pid' => $pid]);
+                $a = $aStmt->fetch(PDO::FETCH_ASSOC);
+                if ($a === false) {
+                    continue;
+                }
+                $addons[] = ['id' => (int) $a['id'], 'name' => (string) $a['name'], 'price' => (float) $a['price']];
+                $addonsTotal += (float) $a['price'];
+            }
+
+            $lineUnit = $unitPrice + $addonsTotal;
+            $lineTotal = $lineUnit * $qty;
+            $lines[] = [
+                'product_id' => $pid,
+                'product_name' => (string) $p['name'],
+                'qty' => $qty,
+                'unit_price' => round($lineUnit, 2),
+                'line_total' => round($lineTotal, 2),
+                'addons' => $addons,
+            ];
+        }
+
+        if ($lines === []) {
+            throw new \RuntimeException('Nenhum item válido no carrinho.');
+        }
+
+        return $lines;
+    }
+
+    /**
+     * Envia SMS opcional ao cliente quando o status do pedido muda.
+     */
+    public static function notifyStatusSms(int $orderId, string $status): void
+    {
+        if (Env::get('NOTIFY_ORDER_SMS', '0') !== '1') {
+            return;
+        }
+
+        $pdo = Database::pdo();
+        $st = $pdo->prepare('SELECT customer_phone, order_number FROM orders WHERE id = :id LIMIT 1');
+        $st->execute(['id' => $orderId]);
+        $row = $st->fetch(PDO::FETCH_ASSOC);
+        if ($row === false) {
+            return;
+        }
+
+        $e164 = \App\Helpers\Phone::normalizeBr((string) $row['customer_phone']);
+        if ($e164 === null) {
+            return;
+        }
+
+        $msg = sprintf('Desk Food: pedido %s agora está em "%s".', $row['order_number'], $status);
+        SmsService::send($e164, $msg);
+    }
+}

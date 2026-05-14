@@ -1,0 +1,12 @@
+/vendor/
+/.env
+/public/uploads/*
+!/public/uploads/.gitkeep
+/public/uploads/products/*
+!/public/uploads/products/.gitkeep
+/storage/.installed
+/storage/logs/*
+!/storage/logs/.gitkeep
+/storage/cache/*
+!/storage/cache/.gitkeep
+.DS_Store

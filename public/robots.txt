@@ -1,0 +1,11 @@
+User-agent: *
+Allow: /
+Allow: /landing
+Allow: /ajuda
+Allow: /termos
+Allow: /privacidade
+Disallow: /admin
+Disallow: /operador
+Disallow: /cliente
+Disallow: /install.php
+Disallow: /webhooks/
