@@ -110,6 +110,28 @@ Pedidos em status `pendente` ou `confirmado` (PIX não pago) podem ser cancelado
 5. `ANALYTICS_GA_ID` (opcional) para GA4 na landing e site público.
 6. Testar `/health`, fluxo cliente, webhook PIX e painel operador (5 colunas + som).
 
+## Deploy (Nginx + PHP-FPM)
+
+Arquivos em `deploy/`:
+
+- `nginx-deskfood.conf` — virtual host (docroot `public/`)
+- `php-fpm-deskfood.conf` — pool PHP 8.3
+- `cron.example` — backup e limpeza
+- `.env.production.example` — modelo para o servidor
+
+Passos resumidos:
+
+```bash
+cd /var/www/deskfood
+composer install --no-dev --optimize-autoloader
+cp .env.production.example .env   # edite credenciais
+php install.php
+sudo cp deploy/nginx-deskfood.conf /etc/nginx/sites-available/deskfood
+sudo cp deploy/php-fpm-deskfood.conf /etc/php/8.3/fpm/pool.d/deskfood.conf
+sudo nginx -t && sudo systemctl reload nginx php8.3-fpm
+sudo certbot --nginx -d deskfood.seudominio.com.br
+```
+
 ## Produção
 
 - Defina `APP_ENV=production`, `APP_URL` com HTTPS e `APP_SECRET` forte (32+ caracteres aleatórios).
