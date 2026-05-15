@@ -7,6 +7,7 @@ namespace App\Services;
 use App\Database;
 use App\Helpers\Logger;
 use App\Helpers\Phone;
+use App\Services\RateLimitService;
 use PDO;
 use Throwable;
 
@@ -44,9 +45,13 @@ final class AuthService
         }
 
         $pdo = Database::pdo();
+        if (RateLimitService::isLimited('otp_ip', 'send', 15, 900)) {
+            return ['ok' => false, 'message' => 'Muitas tentativas deste dispositivo. Aguarde alguns minutos.'];
+        }
         if (!self::canSendAgain($pdo, $e164)) {
             return ['ok' => false, 'message' => 'Muitas tentativas. Aguarde 15 minutos para novo código.'];
         }
+        RateLimitService::hit('otp_ip', 'send');
 
         $code = (string) random_int(100000, 999999);
         $hash = password_hash($code, PASSWORD_BCRYPT);
@@ -98,6 +103,15 @@ final class AuthService
             return ['ok' => false, 'message' => 'Código inválido.'];
         }
 
+        if (RateLimitService::isLimited('otp_verify_ip', 'verify', 20, 900)) {
+            return ['ok' => false, 'message' => 'Muitas tentativas deste dispositivo. Aguarde alguns minutos.'];
+        }
+        if (RateLimitService::isLimited('otp_verify_phone', $e164, 10, 900)) {
+            return ['ok' => false, 'message' => 'Muitas tentativas para este telefone. Aguarde alguns minutos.'];
+        }
+        RateLimitService::hit('otp_verify_ip', 'verify');
+        RateLimitService::hit('otp_verify_phone', $e164);
+
         $pdo = Database::pdo();
         $stmt = $pdo->prepare(
             'SELECT * FROM otp_codes WHERE phone_e164 = :p AND used_at IS NULL AND expires_at > NOW() ORDER BY id DESC LIMIT 1'
@@ -106,11 +120,19 @@ final class AuthService
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
         if ($row === false || !password_verify($code, (string) $row['code_hash'])) {
             if ($row !== false) {
-                $u = $pdo->prepare('UPDATE otp_codes SET attempts = attempts + 1, updated_at = NOW() WHERE id = :id');
-                $u->execute(['id' => $row['id']]);
+                $attempts = (int) $row['attempts'] + 1;
+                $u = $pdo->prepare('UPDATE otp_codes SET attempts = :a, updated_at = NOW() WHERE id = :id');
+                $u->execute(['a' => $attempts, 'id' => $row['id']]);
+                if ($attempts >= 5) {
+                    return ['ok' => false, 'message' => 'Muitas tentativas. Solicite um novo código.'];
+                }
             }
 
             return ['ok' => false, 'message' => 'Código incorreto ou expirado.'];
+        }
+
+        if ((int) ($row['attempts'] ?? 0) >= 5) {
+            return ['ok' => false, 'message' => 'Código bloqueado. Solicite um novo código.'];
         }
 
         $name = (string) ($_SESSION['otp_pending_name'] ?? 'Cliente');

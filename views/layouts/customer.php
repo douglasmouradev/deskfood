@@ -30,6 +30,7 @@ $title = $title ?? ($config['name'] ?? 'Desk Food');
         </a>
         <nav class="flex items-center gap-4 text-sm font-medium text-slate-600">
             <a class="hover:text-brand-600" href="/cliente/pedidos">Meus pedidos</a>
+            <a class="hover:text-brand-600" href="/cliente/enderecos">Endereços</a>
             <a class="hover:text-brand-600" href="/cliente/lgpd">Privacidade (LGPD)</a>
             <a class="rounded-full bg-brand-500 px-3 py-1 text-white hover:bg-brand-600" href="/cliente/sair">Sair</a>
         </nav>

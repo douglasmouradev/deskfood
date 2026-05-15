@@ -7,6 +7,7 @@ namespace App\Controllers;
 use App\Database;
 use App\Helpers\Csrf;
 use App\Helpers\Redirect;
+use App\Helpers\SessionHelper;
 use App\Services\LoginThrottleService;
 
 /**
@@ -76,7 +77,7 @@ final class OperatorAuthController extends Controller
      */
     public function logout(): void
     {
-        unset($_SESSION['admin_id'], $_SESSION['admin_role'], $_SESSION['admin_name'], $_SESSION['unit_id']);
+        SessionHelper::destroy();
         Redirect::to('/operador/login');
     }
 }

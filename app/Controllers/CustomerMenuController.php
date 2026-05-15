@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 use App\Database;
+use App\Services\BusinessHoursService;
 
 /**
  * Cardápio público da unidade selecionada pelo slug.
@@ -55,12 +56,17 @@ final class CustomerMenuController extends Controller
             }
         }
 
+        $isOpen = BusinessHoursService::isOpen($unit);
+        $hoursLabel = BusinessHoursService::statusLabel($unit);
+
         $this->view('customer/menu', [
             'unit' => $unit,
             'categories' => $categories,
             'products' => $rows,
             'addonsByProduct' => $byProduct,
             'cart' => $_SESSION['cart'] ?? null,
+            'unitOpen' => $isOpen,
+            'hoursLabel' => $hoursLabel,
             'title' => (string) $unit['name'],
         ], 'customer');
     }

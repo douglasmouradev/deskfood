@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 use App\Database;
+use App\Services\RateLimitService;
 
 /**
  * Acompanhamento público do pedido com polling JSON.
@@ -24,7 +25,26 @@ final class TrackController extends Controller
             return;
         }
 
-        $this->view('customer/track', ['order' => $order, 'token' => $token, 'title' => 'Acompanhar pedido'], 'public');
+        $rating = null;
+        try {
+            $pdo = Database::pdo();
+            $rs = $pdo->prepare('SELECT stars, comment FROM order_ratings WHERE order_id = :oid LIMIT 1');
+            $rs->execute(['oid' => (int) $order['id']]);
+            $rating = $rs->fetch(\PDO::FETCH_ASSOC) ?: null;
+        } catch (\Throwable) {
+            $rating = null;
+        }
+
+        $this->view('customer/track', [
+            'order' => self::sanitizeForPublic($order),
+            'token' => $token,
+            'rating' => $rating,
+            'csrf' => \App\Helpers\Csrf::token(),
+            'flash_ok' => $_SESSION['flash_ok'] ?? null,
+            'flash_error' => $_SESSION['flash_error'] ?? null,
+            'title' => 'Acompanhar pedido',
+        ], 'public');
+        unset($_SESSION['flash_ok'], $_SESSION['flash_error']);
     }
 
     /**
@@ -32,6 +52,13 @@ final class TrackController extends Controller
      */
     public function poll(string $token): void
     {
+        if (RateLimitService::isLimited('track_poll', substr($token, 0, 32), 120, 3600)) {
+            $this->json(['ok' => false, 'message' => 'Muitas consultas. Aguarde.'], 429);
+
+            return;
+        }
+        RateLimitService::hit('track_poll', substr($token, 0, 32));
+
         $order = $this->loadOrderByToken($token);
         if ($order === null) {
             $this->json(['ok' => false, 'message' => 'Não encontrado'], 404);
@@ -39,29 +66,35 @@ final class TrackController extends Controller
             return;
         }
 
+        $public = self::sanitizeForPublic($order);
         $this->json([
             'ok' => true,
-            'status' => $order['status'],
-            'payment_status' => $order['payment_status'],
-            'motoboy' => $order['motoboy_name'] ? [
-                'name' => $order['motoboy_name'],
-                'photo' => $order['motoboy_photo'],
+            'status' => $public['status'],
+            'payment_status' => $public['payment_status'],
+            'motoboy' => $public['motoboy_name'] ? [
+                'name' => $public['motoboy_name'],
             ] : null,
-            'updated_at' => $order['updated_at'],
+            'updated_at' => $public['updated_at'],
         ]);
     }
 
     /**
-     * Carrega pedido com joins opcionais do motoboy ativo.
-     *
      * @return array<string, mixed>|null
      */
     private function loadOrderByToken(string $token): ?array
     {
+        if (!preg_match('/^[a-f0-9]{32}$/i', $token)) {
+            return null;
+        }
+
         $pdo = Database::pdo();
         $st = $pdo->prepare(
-            'SELECT o.*, m.name AS motoboy_name, m.photo_path AS motoboy_photo
+            'SELECT o.id, o.order_number, o.status, o.payment_status, o.payment_method,
+                    o.delivery_type, o.updated_at, o.created_at,
+                    u.name AS unit_name, u.phone AS unit_phone,
+                    m.name AS motoboy_name
              FROM orders o
+             INNER JOIN units u ON u.id = o.unit_id
              LEFT JOIN deliveries d ON d.order_id = o.id
              LEFT JOIN motoboys m ON m.id = d.motoboy_id
              WHERE o.tracking_token = :t AND o.deleted_at IS NULL
@@ -71,5 +104,28 @@ final class TrackController extends Controller
         $row = $st->fetch(\PDO::FETCH_ASSOC);
 
         return $row !== false ? $row : null;
+    }
+
+    /**
+     * Remove dados sensíveis antes de expor ao titular ou polling público.
+     *
+     * @param array<string, mixed> $order
+     * @return array<string, mixed>
+     */
+    public static function sanitizeForPublic(array $order): array
+    {
+        return [
+            'id' => (int) ($order['id'] ?? 0),
+            'order_number' => (string) ($order['order_number'] ?? ''),
+            'status' => (string) ($order['status'] ?? ''),
+            'payment_status' => (string) ($order['payment_status'] ?? ''),
+            'payment_method' => (string) ($order['payment_method'] ?? ''),
+            'delivery_type' => (string) ($order['delivery_type'] ?? 'delivery'),
+            'unit_name' => (string) ($order['unit_name'] ?? ''),
+            'unit_phone' => (string) ($order['unit_phone'] ?? ''),
+            'motoboy_name' => $order['motoboy_name'] ?? null,
+            'updated_at' => (string) ($order['updated_at'] ?? ''),
+            'created_at' => (string) ($order['created_at'] ?? ''),
+        ];
     }
 }

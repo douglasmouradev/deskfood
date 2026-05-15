@@ -8,6 +8,31 @@ on:
 jobs:
   php:
     runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: desk_food_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    env:
+      APP_ENV: local
+      APP_SECRET: ci_test_secret_32_chars_minimum_ok
+      DB_HOST: 127.0.0.1
+      DB_PORT: 3306
+      DB_DATABASE: desk_food_test
+      DB_USERNAME: root
+      DB_PASSWORD: root
+      PIX_WEBHOOK_SECRET: ci_webhook_secret
+
     steps:
       - uses: actions/checkout@v4
 
@@ -20,5 +45,11 @@ jobs:
       - name: Composer install
         run: composer install --no-interaction --no-progress
 
+      - name: Run migrations
+        run: php install.php
+
       - name: PHP syntax check
         run: composer run lint
+
+      - name: PHPUnit
+        run: composer test

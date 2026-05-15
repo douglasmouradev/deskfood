@@ -17,6 +17,7 @@ final class LandingController extends Controller
         $this->view('landing/index', [
             'title' => 'Desk Food — Delivery profissional para o seu restaurante',
             'metaDescription' => 'Desk Food: plataforma de delivery multi-unidade com PIX, caixa, motoboys, OTP e LGPD. Recursos, fluxo operacional e contato comercial.',
+            'csrf' => \App\Helpers\Csrf::token(),
         ], 'landing');
     }
 }

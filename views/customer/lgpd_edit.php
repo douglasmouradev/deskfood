@@ -12,6 +12,10 @@ declare(strict_types=1);
         <label class="text-sm font-medium">Nome</label>
         <input name="name" value="<?= htmlspecialchars((string) $user['name']) ?>" class="mt-1 w-full rounded-xl border px-3 py-2 text-sm" required>
     </div>
+    <div>
+        <label class="text-sm font-medium">E-mail <span class="font-normal text-slate-500">(opcional, confirmações de pedido)</span></label>
+        <input type="email" name="email" value="<?= htmlspecialchars((string) ($user['email'] ?? '')) ?>" class="mt-1 w-full rounded-xl border px-3 py-2 text-sm" placeholder="voce@email.com">
+    </div>
     <p class="text-xs text-slate-500">Para alterar telefone, contate o suporte ou refaça o cadastro — exige novo fluxo OTP.</p>
     <button class="rounded-full bg-orange-500 px-5 py-2 text-sm font-semibold text-white">Salvar</button>
 </form>

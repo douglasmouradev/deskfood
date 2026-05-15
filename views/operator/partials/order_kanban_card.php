@@ -17,6 +17,7 @@ $pixPend = ($order['payment_method'] ?? '') === 'pix' && ($order['payment_status
     <p class="text-xs text-slate-500"><?= htmlspecialchars((string) $order['customer_phone']) ?></p>
     <p class="mt-2 text-sm font-bold text-orange-600">R$ <?= number_format((float) $order['total'], 2, ',', '.') ?></p>
     <p class="mt-1 text-[10px] uppercase tracking-wide text-slate-400"><?= htmlspecialchars($st) ?></p>
+    <a href="/operador/pedidos/<?= (int) $order['id'] ?>/imprimir" target="_blank" rel="noopener" class="mt-2 inline-block text-[10px] font-semibold text-slate-600 underline hover:text-orange-600">Imprimir comanda</a>
 
     <div class="mt-3 space-y-2 border-t border-slate-100 pt-3">
         <form method="post" action="/operador/pedidos/<?= (int) $order['id'] ?>/status" class="space-y-1.5">

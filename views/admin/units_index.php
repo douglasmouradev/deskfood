@@ -25,7 +25,8 @@ declare(strict_types=1);
                 <td class="px-4 py-3"><?= htmlspecialchars((string) $u['city']) ?></td>
                 <td class="px-4 py-3">R$ <?= number_format((float) $u['delivery_fee'], 2, ',', '.') ?></td>
                 <td class="px-4 py-3"><?= !empty($u['is_active']) ? 'Sim' : 'Não' ?></td>
-                <td class="px-4 py-3 text-right">
+                <td class="px-4 py-3 text-right space-x-2">
+                    <a href="/admin/unidades/<?= (int) $u['id'] ?>/editar" class="text-xs font-semibold text-slate-700 hover:underline">Editar</a>
                     <form method="post" action="/admin/unidades/<?= (int) $u['id'] ?>/toggle" class="inline">
                         <input type="hidden" name="_csrf" value="<?= htmlspecialchars($csrf) ?>">
                         <button class="text-xs font-semibold text-orange-600">Alternar</button>

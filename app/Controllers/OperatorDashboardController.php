@@ -13,9 +13,6 @@ use PDO;
  */
 final class OperatorDashboardController extends Controller
 {
-    /**
-     * Lista pedidos recentes da unidade vinculada ao operador.
-     */
     public function index(): void
     {
         $unitId = (int) ($_SESSION['unit_id'] ?? 0);
@@ -46,9 +43,6 @@ final class OperatorDashboardController extends Controller
         ], 'operator');
     }
 
-    /**
-     * JSON leve para o navegador detectar mudanças no quadro e recarregar a página.
-     */
     public function boardPoll(): void
     {
         $unitId = (int) ($_SESSION['unit_id'] ?? 0);
@@ -69,7 +63,8 @@ final class OperatorDashboardController extends Controller
             'rev' => $rev,
             'counts' => [
                 'novos' => count($board['novos']),
-                'prontos' => count($board['prontos']),
+                'confirmados' => count($board['confirmados']),
+                'em_preparo' => count($board['em_preparo']),
                 'saiu' => count($board['saiu']),
                 'pendentes' => count($board['pendentes']),
                 'finalizados' => count($board['finalizados']),
@@ -78,8 +73,107 @@ final class OperatorDashboardController extends Controller
     }
 
     /**
-     * @return list<array<string,mixed>>
+     * Server-Sent Events: envia nova revisão quando o quadro muda (substitui reload completo).
      */
+    public function boardStream(): void
+    {
+        $unitId = (int) ($_SESSION['unit_id'] ?? 0);
+        if ($unitId <= 0) {
+            http_response_code(403);
+            exit;
+        }
+
+        header('Content-Type: text/event-stream');
+        header('Cache-Control: no-cache');
+        header('Connection: keep-alive');
+        header('X-Accel-Buffering: no');
+
+        if (function_exists('session_write_close')) {
+            session_write_close();
+        }
+
+        $pdo = Database::pdo();
+        $lastRev = '';
+        $iterations = 0;
+        $maxIter = 90;
+
+        while ($iterations < $maxIter && !connection_aborted()) {
+            $orders = self::loadOrdersForUnit($pdo, $unitId);
+            $board = self::partitionOrdersForBoard($orders);
+            $touch = self::maxOrdersTouch($pdo, $unitId);
+            $rev = self::computeBoardRevision($board, $touch);
+
+            if ($rev !== $lastRev) {
+                $payload = json_encode([
+                    'rev' => $rev,
+                    'counts' => [
+                        'novos' => count($board['novos']),
+                        'confirmados' => count($board['confirmados']),
+                        'em_preparo' => count($board['em_preparo']),
+                        'saiu' => count($board['saiu']),
+                        'pendentes' => count($board['pendentes']),
+                    ],
+                ], JSON_THROW_ON_ERROR);
+                echo "event: board\n";
+                echo 'data: ' . $payload . "\n\n";
+                if (ob_get_level() > 0) {
+                    ob_flush();
+                }
+                flush();
+                $lastRev = $rev;
+            } else {
+                echo ": ping\n\n";
+                if (ob_get_level() > 0) {
+                    ob_flush();
+                }
+                flush();
+            }
+
+            sleep(2);
+            ++$iterations;
+        }
+        exit;
+    }
+
+    /**
+     * Fragmento HTML do quadro para atualização sem reload da página.
+     */
+    public function boardHtml(): void
+    {
+        $unitId = (int) ($_SESSION['unit_id'] ?? 0);
+        if ($unitId <= 0) {
+            $this->json(['ok' => false], 403);
+
+            return;
+        }
+
+        $pdo = Database::pdo();
+        $orders = self::loadOrdersForUnit($pdo, $unitId);
+        $board = self::partitionOrdersForBoard($orders);
+        $touch = self::maxOrdersTouch($pdo, $unitId);
+        $rev = self::computeBoardRevision($board, $touch);
+
+        $motoboys = $pdo->prepare('SELECT id, name FROM motoboys WHERE unit_id = :u AND is_active = 1 AND deleted_at IS NULL');
+        $motoboys->execute(['u' => $unitId]);
+        $mb = $motoboys->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+        $csrf = \App\Helpers\Csrf::token();
+        ob_start();
+        require BASE_PATH . '/views/operator/partials/board_columns.php';
+        $html = (string) ob_get_clean();
+
+        $this->json([
+            'ok' => true,
+            'rev' => $rev,
+            'html' => $html,
+            'counts' => [
+                'novos' => count($board['novos']),
+                'pendentes' => count($board['pendentes']),
+            ],
+        ]);
+    }
+
+    /** @return list<array<string,mixed>> */
     private static function loadOrdersForUnit(PDO $pdo, int $unitId): array
     {
         $st = $pdo->prepare(
@@ -102,13 +196,14 @@ final class OperatorDashboardController extends Controller
     }
 
     /**
-     * @param array{novos: list, prontos: list, saiu: list, pendentes: list, finalizados: list} $board
+     * @param array{novos:list,confirmados:list,em_preparo:list,saiu:list,pendentes:list,finalizados:list} $board
      */
     private static function computeBoardRevision(array $board, string $maxUpdated): string
     {
         $payload = [
             'n' => count($board['novos']),
-            'p' => count($board['prontos']),
+            'c' => count($board['confirmados']),
+            'e' => count($board['em_preparo']),
             's' => count($board['saiu']),
             'x' => count($board['pendentes']),
             'f' => count($board['finalizados']),
@@ -119,12 +214,11 @@ final class OperatorDashboardController extends Controller
     }
 
     /**
-     * Agrupa pedidos ativos em colunas do quadro: novos, prontos (cozinha), saiu, pendentes (PIX).
-     *
      * @param list<array<string,mixed>> $orders
      * @return array{
      *   novos: list<array<string,mixed>>,
-     *   prontos: list<array<string,mixed>>,
+     *   confirmados: list<array<string,mixed>>,
+     *   em_preparo: list<array<string,mixed>>,
      *   saiu: list<array<string,mixed>>,
      *   pendentes: list<array<string,mixed>>,
      *   finalizados: list<array<string,mixed>>
@@ -133,7 +227,8 @@ final class OperatorDashboardController extends Controller
     private static function partitionOrdersForBoard(array $orders): array
     {
         $novos = [];
-        $prontos = [];
+        $confirmados = [];
+        $emPreparo = [];
         $saiu = [];
         $pendentes = [];
         $finalizados = [];
@@ -153,8 +248,10 @@ final class OperatorDashboardController extends Controller
 
             if ($status === 'pendente') {
                 $novos[] = $o;
-            } elseif ($status === 'confirmado' || $status === 'em_preparo') {
-                $prontos[] = $o;
+            } elseif ($status === 'confirmado') {
+                $confirmados[] = $o;
+            } elseif ($status === 'em_preparo') {
+                $emPreparo[] = $o;
             } elseif ($status === 'saiu_entrega') {
                 $saiu[] = $o;
             }
@@ -162,14 +259,16 @@ final class OperatorDashboardController extends Controller
 
         $cmp = static fn (array $a, array $b): int => strcmp((string) ($b['created_at'] ?? ''), (string) ($a['created_at'] ?? ''));
         usort($novos, $cmp);
-        usort($prontos, $cmp);
+        usort($confirmados, $cmp);
+        usort($emPreparo, $cmp);
         usort($saiu, $cmp);
         usort($pendentes, $cmp);
         usort($finalizados, $cmp);
 
         return [
             'novos' => $novos,
-            'prontos' => $prontos,
+            'confirmados' => $confirmados,
+            'em_preparo' => $emPreparo,
             'saiu' => $saiu,
             'pendentes' => $pendentes,
             'finalizados' => $finalizados,

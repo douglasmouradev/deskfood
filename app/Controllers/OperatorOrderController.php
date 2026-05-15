@@ -7,6 +7,7 @@ namespace App\Controllers;
 use App\Database;
 use App\Helpers\Csrf;
 use App\Helpers\Redirect;
+use App\Services\AuditLogService;
 use App\Services\CashRegisterService;
 use App\Services\OrderService;
 
@@ -68,6 +69,11 @@ final class OperatorOrderController extends Controller
         ]);
 
         OrderService::notifyStatusSms($id, $status);
+
+        AuditLogService::record('operator', (int) ($_SESSION['admin_id'] ?? 0), 'order.status.' . $status, 'order', $id, [
+            'note' => $note,
+            'unit_id' => $unitId,
+        ]);
 
         if ($status === 'entregue') {
             try {
@@ -138,5 +144,33 @@ final class OperatorOrderController extends Controller
         OrderService::notifyStatusSms($id, 'saiu_entrega');
 
         Redirect::to('/operador');
+    }
+
+    /**
+     * Comanda de cozinha para impressão (layout minimal, sem sidebar).
+     */
+    public function print(int $id): void
+    {
+        $unitId = (int) ($_SESSION['unit_id'] ?? 0);
+        $pdo = Database::pdo();
+        $o = $pdo->prepare('SELECT o.*, u.name AS unit_name FROM orders o INNER JOIN units u ON u.id = o.unit_id WHERE o.id = :id AND o.unit_id = :u LIMIT 1');
+        $o->execute(['id' => $id, 'u' => $unitId]);
+        $order = $o->fetch(\PDO::FETCH_ASSOC);
+        if ($order === false) {
+            http_response_code(404);
+            echo 'Pedido não encontrado.';
+
+            return;
+        }
+
+        $items = $pdo->prepare('SELECT product_name, quantity, unit_price, line_total FROM order_items WHERE order_id = :id ORDER BY id ASC');
+        $items->execute(['id' => $id]);
+        $lines = $items->fetchAll(\PDO::FETCH_ASSOC) ?: [];
+
+        $this->view('operator/print_order', [
+            'order' => $order,
+            'items' => $lines,
+            'title' => 'Comanda #' . ($order['order_number'] ?? ''),
+        ], null);
     }
 }

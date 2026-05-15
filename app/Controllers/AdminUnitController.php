@@ -7,6 +7,7 @@ namespace App\Controllers;
 use App\Database;
 use App\Helpers\Csrf;
 use App\Helpers\Redirect;
+use App\Services\AuditLogService;
 
 /**
  * CRUD de unidades exclusivo do super admin.
@@ -47,8 +48,8 @@ final class AdminUnitController extends Controller
 
         $pdo = Database::pdo();
         $ins = $pdo->prepare(
-            'INSERT INTO units (name, slug, cnpj, address_street, address_number, address_complement, neighborhood, city, state, zip, phone, delivery_radius_km, delivery_fee, business_hours, is_active, created_at, updated_at)
-             VALUES (:name,:slug,:cnpj,:st,:num,:comp,:nei,:city,:state,:zip,:phone,:rad,:fee,:bh,1,NOW(),NOW())'
+            'INSERT INTO units (name, slug, cnpj, address_street, address_number, address_complement, neighborhood, city, state, zip, phone, delivery_radius_km, delivery_fee, minimum_order, business_hours, is_active, created_at, updated_at)
+             VALUES (:name,:slug,:cnpj,:st,:num,:comp,:nei,:city,:state,:zip,:phone,:rad,:fee,:min,:bh,1,NOW(),NOW())'
         );
         $ins->execute([
             'name' => trim((string) filter_input(INPUT_POST, 'name', FILTER_UNSAFE_RAW)),
@@ -64,7 +65,12 @@ final class AdminUnitController extends Controller
             'phone' => trim((string) filter_input(INPUT_POST, 'phone', FILTER_UNSAFE_RAW)),
             'rad' => (float) filter_input(INPUT_POST, 'delivery_radius_km', FILTER_VALIDATE_FLOAT),
             'fee' => (float) filter_input(INPUT_POST, 'delivery_fee', FILTER_VALIDATE_FLOAT),
+            'min' => max(0, (float) filter_input(INPUT_POST, 'minimum_order', FILTER_VALIDATE_FLOAT)),
             'bh' => (string) filter_input(INPUT_POST, 'business_hours', FILTER_UNSAFE_RAW),
+        ]);
+
+        AuditLogService::record('admin', (int) ($_SESSION['admin_id'] ?? 0), 'unit.create', 'unit', (int) $pdo->lastInsertId(), [
+            'slug' => $slug,
         ]);
 
         Redirect::to('/admin/unidades');
@@ -73,6 +79,60 @@ final class AdminUnitController extends Controller
     /**
      * Alterna flag `is_active` da unidade.
      */
+    public function editForm(int $id): void
+    {
+        $pdo = Database::pdo();
+        $st = $pdo->prepare('SELECT * FROM units WHERE id = :id AND deleted_at IS NULL LIMIT 1');
+        $st->execute(['id' => $id]);
+        $unit = $st->fetch(\PDO::FETCH_ASSOC);
+        if ($unit === false) {
+            Redirect::to('/admin/unidades');
+        }
+
+        $this->view('admin/units_form', [
+            'unit' => $unit,
+            'csrf' => Csrf::token(),
+            'title' => 'Editar unidade',
+        ], 'admin');
+    }
+
+    public function editSave(int $id): void
+    {
+        if (!Csrf::validate()) {
+            Redirect::to('/admin/unidades/' . $id . '/editar');
+        }
+
+        $pdo = Database::pdo();
+        $pdo->prepare(
+            'UPDATE units SET
+                name = :name, cnpj = :cnpj, address_street = :st, address_number = :num,
+                address_complement = :comp, neighborhood = :nei, city = :city, state = :state, zip = :zip,
+                phone = :phone, delivery_radius_km = :rad, delivery_fee = :fee, minimum_order = :min,
+                business_hours = :bh, updated_at = NOW()
+             WHERE id = :id AND deleted_at IS NULL'
+        )->execute([
+            'id' => $id,
+            'name' => trim((string) filter_input(INPUT_POST, 'name', FILTER_UNSAFE_RAW)),
+            'cnpj' => trim((string) filter_input(INPUT_POST, 'cnpj', FILTER_UNSAFE_RAW)),
+            'st' => trim((string) filter_input(INPUT_POST, 'address_street', FILTER_UNSAFE_RAW)),
+            'num' => trim((string) filter_input(INPUT_POST, 'address_number', FILTER_UNSAFE_RAW)),
+            'comp' => trim((string) (filter_input(INPUT_POST, 'address_complement', FILTER_UNSAFE_RAW) ?: '')),
+            'nei' => trim((string) filter_input(INPUT_POST, 'neighborhood', FILTER_UNSAFE_RAW)),
+            'city' => trim((string) filter_input(INPUT_POST, 'city', FILTER_UNSAFE_RAW)),
+            'state' => strtoupper(trim((string) filter_input(INPUT_POST, 'state', FILTER_UNSAFE_RAW))),
+            'zip' => trim((string) filter_input(INPUT_POST, 'zip', FILTER_UNSAFE_RAW)),
+            'phone' => trim((string) filter_input(INPUT_POST, 'phone', FILTER_UNSAFE_RAW)),
+            'rad' => (float) filter_input(INPUT_POST, 'delivery_radius_km', FILTER_VALIDATE_FLOAT),
+            'fee' => (float) filter_input(INPUT_POST, 'delivery_fee', FILTER_VALIDATE_FLOAT),
+            'min' => max(0, (float) filter_input(INPUT_POST, 'minimum_order', FILTER_VALIDATE_FLOAT)),
+            'bh' => (string) filter_input(INPUT_POST, 'business_hours', FILTER_UNSAFE_RAW),
+        ]);
+
+        AuditLogService::record('admin', (int) ($_SESSION['admin_id'] ?? 0), 'unit.update', 'unit', $id, []);
+
+        Redirect::to('/admin/unidades');
+    }
+
     public function toggle(int $id): void
     {
         if (!Csrf::validate()) {
@@ -81,6 +141,7 @@ final class AdminUnitController extends Controller
 
         $pdo = Database::pdo();
         $pdo->prepare('UPDATE units SET is_active = 1 - is_active, updated_at = NOW() WHERE id = :id')->execute(['id' => $id]);
+        AuditLogService::record('admin', (int) ($_SESSION['admin_id'] ?? 0), 'unit.toggle', 'unit', $id, []);
         Redirect::to('/admin/unidades');
     }
 

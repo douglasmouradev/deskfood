@@ -20,10 +20,8 @@ final class MotoboyDeliveryController extends Controller
     public function index(string $token): void
     {
         $pdo = Database::pdo();
-        $m = $pdo->prepare('SELECT * FROM motoboys WHERE access_token = :t AND is_active = 1 AND deleted_at IS NULL LIMIT 1');
-        $m->execute(['t' => $token]);
-        $motoboy = $m->fetch(\PDO::FETCH_ASSOC);
-        if ($motoboy === false) {
+        $motoboy = self::findActiveMotoboy($pdo, $token);
+        if ($motoboy === null) {
             http_response_code(404);
             $this->view('errors/404', ['title' => 'Link inválido'], 'public');
 
@@ -60,10 +58,8 @@ final class MotoboyDeliveryController extends Controller
 
         $deliveryId = (int) filter_input(INPUT_POST, 'delivery_id', FILTER_VALIDATE_INT);
         $pdo = Database::pdo();
-        $m = $pdo->prepare('SELECT * FROM motoboys WHERE access_token = :t LIMIT 1');
-        $m->execute(['t' => $token]);
-        $motoboy = $m->fetch(\PDO::FETCH_ASSOC);
-        if ($motoboy === false) {
+        $motoboy = self::findActiveMotoboy($pdo, $token);
+        if ($motoboy === null) {
             Redirect::to('/');
         }
 
@@ -115,5 +111,20 @@ final class MotoboyDeliveryController extends Controller
         OrderService::notifyStatusSms($oid, 'entregue');
 
         Redirect::to('/m/' . $token);
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private static function findActiveMotoboy(\PDO $pdo, string $token): ?array
+    {
+        $m = $pdo->prepare(
+            'SELECT * FROM motoboys WHERE access_token = :t AND is_active = 1 AND deleted_at IS NULL
+             AND (token_expires_at IS NULL OR token_expires_at > NOW()) LIMIT 1'
+        );
+        $m->execute(['t' => $token]);
+        $row = $m->fetch(\PDO::FETCH_ASSOC);
+
+        return $row !== false ? $row : null;
     }
 }

@@ -50,6 +50,7 @@ $ogImage = $baseUrl . '/assets/img/logo.png';
         .tabular { font-family: "Space Grotesk", system-ui, sans-serif; }
         [x-cloak] { display: none !important; }
     </style>
+    <?php require BASE_PATH . '/views/partials/analytics.php'; ?>
 </head>
 <body class="min-h-full bg-white text-ink-900 antialiased">
 <header class="sticky top-0 z-50 border-b border-slate-200/80 bg-white/85 backdrop-blur-md" x-data="{ navOpen: false }">
@@ -68,6 +69,7 @@ $ogImage = $baseUrl . '/assets/img/logo.png';
         <nav id="nav-landing" class="hidden items-center gap-7 text-sm font-semibold text-ink-700 lg:flex">
             <a class="hover:text-brand-600" href="#recursos">Recursos</a>
             <a class="hover:text-brand-600" href="#fluxo">Como funciona</a>
+            <a class="hover:text-brand-600" href="#planos">Planos</a>
             <a class="hover:text-brand-600" href="#contato">Contato</a>
             <a class="hover:text-brand-600" href="#faq">FAQ</a>
             <a class="hover:text-brand-600" href="/ajuda">Ajuda</a>
@@ -90,6 +92,9 @@ $ogImage = $baseUrl . '/assets/img/logo.png';
     </div>
 </header>
 <main class="w-full overflow-x-hidden">
+    <div class="mx-auto max-w-6xl px-4 pt-4">
+        <?php require BASE_PATH . '/views/partials/flash.php'; ?>
+    </div>
     <?php require $__content_path; ?>
 </main>
 <footer class="border-t border-slate-200 bg-slate-50">

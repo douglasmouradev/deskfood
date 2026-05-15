@@ -97,6 +97,19 @@ Cada motoboy recebe link `APP_URL/m/{access_token}` (listado no painel do operad
 - `views/` — camadas de apresentação
 - `storage/logs` — logs da aplicação
 
+## Cancelamento pelo cliente
+
+Pedidos em status `pendente` ou `confirmado` (PIX não pago) podem ser cancelados em **Meus pedidos**.
+
+## Checklist go-live
+
+1. `cp .env.example .env` — preencher DB, `APP_SECRET`, `APP_URL` (HTTPS), **`PIX_WEBHOOK_SECRET` (obrigatório em produção)**, SMS/PIX reais.
+2. `composer install` e `php install.php` (aplica migrations, inclusive `leads`).
+3. `ALLOW_INSTALL=0` em produção; backups: `chmod +x bin/backup-mysql.sh` e agendar no cron.
+4. `MAIL_DRIVER=smtp` + `NOTIFY_ORDER_EMAIL=1` para avisar novo pedido no e-mail comercial.
+5. `ANALYTICS_GA_ID` (opcional) para GA4 na landing e site público.
+6. Testar `/health`, fluxo cliente, webhook PIX e painel operador (5 colunas + som).
+
 ## Produção
 
 - Defina `APP_ENV=production`, `APP_URL` com HTTPS e `APP_SECRET` forte (32+ caracteres aleatórios).

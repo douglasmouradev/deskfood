@@ -4,15 +4,30 @@ declare(strict_types=1);
 /** @var list<array<string,mixed>> $categories */
 /** @var list<array<string,mixed>> $products */
 /** @var array<int, list<array<string,mixed>>> $addonsByProduct */
+/** @var bool $unitOpen */
+/** @var string $hoursLabel */
+$unitOpen = $unitOpen ?? true;
 ?>
+<?php if (!$unitOpen): ?>
+    <div class="mb-6 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+        <strong>Fechado no momento.</strong> <?= htmlspecialchars($hoursLabel ?? '') ?>
+    </div>
+<?php endif; ?>
 <div class="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
     <div>
         <p class="text-sm font-semibold text-orange-600"><?= htmlspecialchars((string) $unit['city']) ?></p>
         <h1 class="text-3xl font-bold text-slate-900"><?= htmlspecialchars((string) $unit['name']) ?></h1>
         <p class="mt-2 text-sm text-slate-600">Taxa de entrega: <span class="font-semibold text-slate-900">R$ <?= number_format((float) $unit['delivery_fee'], 2, ',', '.') ?></span></p>
+        <?php if ((float) ($unit['minimum_order'] ?? 0) > 0): ?>
+            <p class="mt-1 text-sm text-slate-600">Pedido mínimo: <span class="font-semibold text-slate-900">R$ <?= number_format((float) $unit['minimum_order'], 2, ',', '.') ?></span></p>
+        <?php endif; ?>
     </div>
     <a href="/cliente/carrinho" class="inline-flex items-center justify-center rounded-full bg-slate-900 px-5 py-2 text-sm font-semibold text-white hover:bg-slate-800">Ver carrinho</a>
 </div>
+
+<div class="mt-6" x-data="{ q: '' }">
+    <label class="sr-only" for="menu-search">Buscar no cardápio</label>
+    <input id="menu-search" type="search" x-model="q" placeholder="Buscar produto…" class="w-full max-w-md rounded-full border border-slate-200 px-4 py-2 text-sm shadow-sm focus:border-orange-300 focus:outline-none focus:ring-2 focus:ring-orange-100">
 
 <div class="mt-8 space-y-10">
     <?php
@@ -35,7 +50,7 @@ declare(strict_types=1);
                     $pid = (int) $p['id'];
                     $addons = $addonsByProduct[$pid] ?? [];
                     ?>
-                    <div class="rounded-2xl border border-orange-100 bg-white p-4 shadow-sm">
+                    <div class="rounded-2xl border border-orange-100 bg-white p-4 shadow-sm" x-show="!q || <?= json_encode(mb_strtolower((string) $p['name']), JSON_THROW_ON_ERROR) ?>.includes(q.toLowerCase())">
                         <div class="flex gap-3">
                             <?php if (!empty($p['image_path'])): ?>
                                 <img src="/<?= htmlspecialchars(ltrim((string) $p['image_path'], '/')) ?>" alt="" class="h-20 w-20 shrink-0 rounded-xl object-cover">
@@ -80,4 +95,5 @@ declare(strict_types=1);
             </div>
         </section>
     <?php endforeach; ?>
+</div>
 </div>

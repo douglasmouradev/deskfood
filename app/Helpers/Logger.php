@@ -23,9 +23,11 @@ final class Logger
         }
 
         $file = $dir . '/app-' . date('Y-m-d') . '.log';
+        $rid = defined('REQUEST_ID') ? REQUEST_ID : '-';
         $line = sprintf(
-            "[%s] %s %s %s\n",
+            "[%s] [%s] %s %s %s\n",
             date('c'),
+            $rid,
             strtoupper($level),
             $message,
             $context !== [] ? json_encode($context, JSON_UNESCAPED_UNICODE) : ''

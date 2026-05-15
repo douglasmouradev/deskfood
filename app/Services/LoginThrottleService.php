@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Database;
+use App\Helpers\ClientIp;
 use App\Helpers\Env;
 use PDO;
 
@@ -76,15 +77,6 @@ final class LoginThrottleService
      */
     private static function clientIp(): string
     {
-        $xff = $_SERVER['HTTP_X_FORWARDED_FOR'] ?? '';
-        if (is_string($xff) && $xff !== '') {
-            $parts = array_map('trim', explode(',', $xff));
-
-            return substr($parts[0] ?? '0.0.0.0', 0, 45);
-        }
-
-        $ip = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
-
-        return substr((string) $ip, 0, 45);
+        return ClientIp::get();
     }
 }

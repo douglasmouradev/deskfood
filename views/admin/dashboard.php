@@ -14,7 +14,7 @@ declare(strict_types=1);
     </div>
 <?php endif; ?>
 
-<div class="grid gap-4 md:grid-cols-4">
+<div class="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
     <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
         <p class="text-xs uppercase text-slate-500">Unidades</p>
         <p class="mt-2 text-3xl font-semibold text-slate-900"><?= (int) $units ?></p>
@@ -32,3 +32,23 @@ declare(strict_types=1);
         <p class="mt-2 text-3xl font-semibold text-slate-900">R$ <?= number_format($revenue_total, 2, ',', '.') ?></p>
     </div>
 </div>
+
+<div class="mt-4 grid gap-4 md:grid-cols-3">
+    <a href="/admin/leads" class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-orange-200">
+        <p class="text-xs uppercase text-slate-500">Leads comerciais</p>
+        <p class="mt-2 text-2xl font-semibold text-slate-900"><?= (int) ($leads_count ?? 0) ?></p>
+    </a>
+    <a href="/admin/operadores" class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-orange-200">
+        <p class="text-xs uppercase text-slate-500">Operadores</p>
+        <p class="mt-2 text-2xl font-semibold text-slate-900"><?= (int) ($operators_count ?? 0) ?></p>
+    </a>
+    <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <p class="text-xs uppercase text-slate-500">Nota média</p>
+        <p class="mt-2 text-2xl font-semibold text-amber-600"><?= isset($avg_rating) && $avg_rating !== null ? number_format((float) $avg_rating, 1, ',', '.') . ' ★' : '—' ?></p>
+    </div>
+</div>
+
+<form method="post" action="/admin/relatorios/pedidos.csv" class="mt-6">
+    <input type="hidden" name="_csrf" value="<?= htmlspecialchars(\App\Helpers\Csrf::token()) ?>">
+    <button type="submit" class="rounded-full border border-slate-300 bg-white px-5 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50">Exportar todos os pedidos (CSV)</button>
+</form>

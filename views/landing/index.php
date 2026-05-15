@@ -158,6 +158,42 @@ if (!isset($config) || !is_array($config)) {
     </div>
 </section>
 
+<section id="planos" class="scroll-mt-24 py-16 md:py-20">
+    <div class="mx-auto max-w-6xl px-4">
+        <h2 class="text-center text-3xl font-bold text-ink-900">Planos para o seu restaurante</h2>
+        <p class="mx-auto mt-3 max-w-xl text-center text-ink-600">Implantação sob medida. Valores de referência — fale com o comercial para proposta final.</p>
+        <div class="mt-12 grid gap-6 md:grid-cols-3">
+            <div class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+                <p class="text-xs font-bold uppercase text-brand-600">Starter</p>
+                <p class="mt-2 text-3xl font-bold text-ink-900">Sob consulta</p>
+                <ul class="mt-4 space-y-2 text-sm text-ink-600">
+                    <li>1 unidade</li>
+                    <li>Cardápio e pedidos</li>
+                    <li>PIX mock ou gateway</li>
+                </ul>
+            </div>
+            <div class="rounded-3xl border-2 border-brand-500 bg-brand-50/50 p-6 shadow-md">
+                <p class="text-xs font-bold uppercase text-brand-700">Profissional</p>
+                <p class="mt-2 text-3xl font-bold text-ink-900">Sob consulta</p>
+                <ul class="mt-4 space-y-2 text-sm text-ink-700">
+                    <li>Multi-unidade</li>
+                    <li>Operador + caixa + motoboy</li>
+                    <li>LGPD e relatórios CSV</li>
+                </ul>
+            </div>
+            <div class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+                <p class="text-xs font-bold uppercase text-brand-600">Enterprise</p>
+                <p class="mt-2 text-3xl font-bold text-ink-900">Sob consulta</p>
+                <ul class="mt-4 space-y-2 text-sm text-ink-600">
+                    <li>VPS dedicada</li>
+                    <li>SMS e PIX produção</li>
+                    <li>Suporte prioritário</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</section>
+
 <section id="contato" class="scroll-mt-24 border-y border-slate-200 bg-slate-50 py-16 md:py-20">
     <div class="mx-auto max-w-6xl px-4 text-center">
         <h2 class="text-3xl font-bold tracking-tight text-ink-900 md:text-4xl">Fale com o comercial</h2>
@@ -181,7 +217,41 @@ if (!isset($config) || !is_array($config)) {
                 </a>
             <?php endif; ?>
         </div>
-        <p class="mt-6 text-sm text-ink-500">Resposta em horário comercial. Para dúvidas técnicas do produto, veja também a <a class="font-semibold text-brand-600 underline" href="/ajuda">central de ajuda</a>.</p>
+        <div class="mx-auto mt-12 max-w-lg rounded-3xl border border-slate-200 bg-white p-6 text-left shadow-sm">
+            <h3 class="text-lg font-bold text-ink-900">Solicitar contato</h3>
+            <form method="post" action="/landing/contato" class="mt-4 space-y-3">
+                <input type="hidden" name="_csrf" value="<?= htmlspecialchars($csrf ?? '') ?>">
+                <input type="text" name="website" value="" tabindex="-1" autocomplete="off" class="absolute h-0 w-0 overflow-hidden opacity-0" aria-hidden="true">
+                <input name="name" required placeholder="Seu nome" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
+                <input name="email" type="email" required placeholder="E-mail" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
+                <input name="phone" placeholder="Telefone (opcional)" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
+                <input name="company" placeholder="Restaurante / empresa" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
+                <textarea name="message" rows="3" placeholder="Mensagem" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"></textarea>
+                <button type="submit" class="w-full rounded-full bg-ink-900 py-2.5 text-sm font-semibold text-white hover:bg-ink-800">Enviar</button>
+            </form>
+        </div>
+        <p class="mt-6 text-sm text-ink-500">Resposta em horário comercial. <a class="font-semibold text-brand-600 underline" href="/ajuda">Central de ajuda</a>.</p>
+    </div>
+</section>
+
+<section class="py-16 md:py-20" id="depoimentos">
+    <div class="mx-auto max-w-6xl px-4">
+        <h2 class="text-center text-2xl font-bold text-ink-900 md:text-3xl">Quem já opera com Desk Food</h2>
+        <p class="mx-auto mt-3 max-w-xl text-center text-ink-600">Restaurantes que centralizaram pedidos, PIX e operação em um só lugar.</p>
+        <div class="mt-10 grid gap-6 md:grid-cols-3">
+            <blockquote class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+                <p class="text-sm text-ink-700">"O quadro ao vivo eliminou pedidos perdidos no WhatsApp. A equipe vê tudo em colunas."</p>
+                <footer class="mt-4 text-xs font-semibold text-ink-500">— Cozinha Centro, SP</footer>
+            </blockquote>
+            <blockquote class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+                <p class="text-sm text-ink-700">"Multi-unidade foi o diferencial: cadastrei duas lojas e controlo operadores pelo painel do dono."</p>
+                <footer class="mt-4 text-xs font-semibold text-ink-500">— Grupo Sabor Norte</footer>
+            </blockquote>
+            <blockquote class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+                <p class="text-sm text-ink-700">"PIX com webhook e rastreio público reduziram ligações de 'cadê meu pedido?'."</p>
+                <footer class="mt-4 text-xs font-semibold text-ink-500">— Delivery Express BA</footer>
+            </blockquote>
+        </div>
     </div>
 </section>
 

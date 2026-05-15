@@ -8,6 +8,7 @@ use App\Database;
 use App\Helpers\Csrf;
 use App\Helpers\Logger;
 use App\Helpers\Redirect;
+use App\Services\AuditLogService;
 
 /**
  * Painel LGPD do titular (visualizar, exportar, corrigir, excluir).
@@ -28,7 +29,7 @@ final class CustomerLgpdController extends Controller
     public function data(): void
     {
         $pdo = Database::pdo();
-        $st = $pdo->prepare('SELECT id, name, phone, phone_e164, created_at FROM users WHERE id = :id LIMIT 1');
+        $st = $pdo->prepare('SELECT id, name, phone, phone_e164, email, created_at FROM users WHERE id = :id LIMIT 1');
         $st->execute(['id' => (int) $_SESSION['user_id']]);
         $user = $st->fetch(\PDO::FETCH_ASSOC) ?: [];
 
@@ -84,14 +85,27 @@ final class CustomerLgpdController extends Controller
         }
 
         $name = trim((string) filter_input(INPUT_POST, 'name', FILTER_UNSAFE_RAW));
+        $emailRaw = trim((string) filter_input(INPUT_POST, 'email', FILTER_UNSAFE_RAW));
+        $email = $emailRaw === '' ? null : $emailRaw;
         if (strlen($name) < 2) {
             $_SESSION['flash_error'] = 'Nome inválido.';
             Redirect::to('/cliente/lgpd/editar');
         }
+        if ($email !== null && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            $_SESSION['flash_error'] = 'E-mail inválido.';
+            Redirect::to('/cliente/lgpd/editar');
+        }
 
         $pdo = Database::pdo();
-        $stmt = $pdo->prepare('UPDATE users SET name = :n, updated_at = NOW() WHERE id = :id');
-        $stmt->execute(['n' => $name, 'id' => (int) $_SESSION['user_id']]);
+        try {
+            $stmt = $pdo->prepare('UPDATE users SET name = :n, email = :e, updated_at = NOW() WHERE id = :id');
+            $stmt->execute(['n' => $name, 'e' => $email, 'id' => (int) $_SESSION['user_id']]);
+        } catch (\Throwable) {
+            $stmt = $pdo->prepare('UPDATE users SET name = :n, updated_at = NOW() WHERE id = :id');
+            $stmt->execute(['n' => $name, 'id' => (int) $_SESSION['user_id']]);
+        }
+
+        AuditLogService::record('customer', (int) $_SESSION['user_id'], 'lgpd.edit', 'user', (int) $_SESSION['user_id'], []);
 
         $_SESSION['flash_ok'] = 'Dados atualizados.';
         Redirect::to('/cliente/lgpd');
@@ -118,7 +132,7 @@ final class CustomerLgpdController extends Controller
             )->execute(['u' => $uid, 't' => 'delete', 'st' => 'completed']);
 
             $pdo->prepare(
-                'UPDATE users SET name = :n, phone = :p, phone_e164 = :e, anonymized_at = NOW(), updated_at = NOW() WHERE id = :id'
+                'UPDATE users SET name = :n, phone = :p, phone_e164 = :e, email = NULL, anonymized_at = NOW(), updated_at = NOW() WHERE id = :id'
             )->execute([
                 'n' => 'Usuário anonimizado',
                 'p' => '00000000000',
@@ -128,6 +142,7 @@ final class CustomerLgpdController extends Controller
 
             $pdo->prepare('UPDATE orders SET user_id = NULL WHERE user_id = :id')->execute(['id' => $uid]);
             $pdo->commit();
+            AuditLogService::record('customer', $uid, 'lgpd.delete', 'user', $uid, []);
         } catch (\Throwable $e) {
             $pdo->rollBack();
             Logger::log('error', 'Falha LGPD delete', ['e' => $e->getMessage()]);

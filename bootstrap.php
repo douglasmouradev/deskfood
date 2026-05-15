@@ -10,6 +10,7 @@ declare(strict_types=1);
  */
 
 use App\Helpers\Env;
+use App\Helpers\ExceptionHandler;
 use App\Services\SessionHandler;
 
 $root = __DIR__;
@@ -59,4 +60,30 @@ session_set_cookie_params([
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
+}
+
+ExceptionHandler::register();
+
+$requestId = bin2hex(random_bytes(8));
+if (!defined('REQUEST_ID')) {
+    define('REQUEST_ID', $requestId);
+}
+if (PHP_SAPI !== 'cli' && !headers_sent()) {
+    header('X-Request-Id: ' . $requestId);
+}
+
+if ($env === 'production') {
+    $secret = Env::get('APP_SECRET', '');
+    if ($secret === null || strlen($secret) < 16 || str_contains($secret, 'altere')) {
+        http_response_code(503);
+        echo 'Configuração inválida: defina APP_SECRET forte no .env.';
+        exit;
+    }
+
+    $pixSecret = trim((string) Env::get('PIX_WEBHOOK_SECRET', ''));
+    if ($pixSecret === '') {
+        http_response_code(503);
+        echo 'Configuração inválida: defina PIX_WEBHOOK_SECRET em produção.';
+        exit;
+    }
 }

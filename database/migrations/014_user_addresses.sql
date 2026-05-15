@@ -1,0 +1,21 @@
+-- Endereços salvos do cliente
+SET NAMES utf8mb4;
+
+CREATE TABLE IF NOT EXISTS user_addresses (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  user_id BIGINT UNSIGNED NOT NULL,
+  label VARCHAR(60) NOT NULL DEFAULT 'Casa',
+  street VARCHAR(200) NOT NULL,
+  number VARCHAR(20) NOT NULL,
+  complement VARCHAR(120) NULL,
+  neighborhood VARCHAR(120) NOT NULL,
+  city VARCHAR(120) NOT NULL,
+  state CHAR(2) NOT NULL,
+  zip VARCHAR(12) NOT NULL,
+  is_default TINYINT(1) NOT NULL DEFAULT 0,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_user_addresses_user (user_id),
+  CONSTRAINT fk_user_addresses_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

@@ -7,6 +7,7 @@ namespace App\Controllers;
 use App\Database;
 use App\Helpers\Csrf;
 use App\Helpers\Redirect;
+use App\Services\CartService;
 
 /**
  * Carrinho de compras armazenado em sessão (por unidade).
@@ -27,9 +28,12 @@ final class CustomerCartController extends Controller
             $unit = $st->fetch(\PDO::FETCH_ASSOC) ?: null;
         }
 
+        $enriched = is_array($unit) ? CartService::enrich(is_array($cart) ? $cart : null, $unit) : null;
+
         $this->view('customer/cart', [
             'cart' => $cart,
             'unit' => $unit,
+            'enriched' => $enriched,
             'csrf' => Csrf::token(),
             'title' => 'Carrinho',
         ], 'customer');
@@ -61,11 +65,7 @@ final class CustomerCartController extends Controller
             $_SESSION['cart'] = ['unit_id' => $unitId, 'items' => []];
         }
 
-        $_SESSION['cart']['items'][] = [
-            'product_id' => $productId,
-            'qty' => $qty,
-            'addons' => $addons,
-        ];
+        CartService::addItem($_SESSION['cart'], $productId, $qty, $addons);
 
         $slug = $this->lookupUnitSlug($unitId);
         Redirect::to('/u/' . $slug . '?added=1');

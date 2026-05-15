@@ -25,9 +25,17 @@ final class HealthController extends Controller
             $db = 'error';
         }
 
+        $storageOk = is_writable(BASE_PATH . '/storage/logs');
+        $uploadsOk = is_dir(BASE_PATH . '/public/uploads') && is_writable(BASE_PATH . '/public/uploads');
+        $ok = $ok && $storageOk && $uploadsOk;
+
         $this->json([
             'status' => $ok ? 'healthy' : 'degraded',
-            'database' => $db,
+            'checks' => [
+                'database' => $db,
+                'storage_writable' => $storageOk,
+                'uploads_writable' => $uploadsOk,
+            ],
             'time' => (new \DateTimeImmutable())->format(\DateTimeInterface::ATOM),
         ], $ok ? 200 : 503);
     }

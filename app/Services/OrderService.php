@@ -7,6 +7,7 @@ namespace App\Services;
 use App\Database;
 use App\Helpers\Env;
 use App\Helpers\Logger;
+use App\Services\AuditLogService;
 use PDO;
 use Throwable;
 
@@ -41,9 +42,10 @@ final class OrderService
      * @param array<string, mixed> $delivery Campos de endereço e observações
      * @param array<string, mixed> $payment payment_method, on_delivery_type, change_for
      * @param array<string, string> $customer name, phone (exibição)
+     * @param array{delivery_type?:string,coupon_code?:string} $options pickup|delivery, cupom opcional
      * @return array{order_id:int,tracking_token:string}
      */
-    public static function createFromCart(int $userId, array $cart, array $delivery, array $payment, array $customer): array
+    public static function createFromCart(int $userId, array $cart, array $delivery, array $payment, array $customer, array $options = []): array
     {
         $pdo = Database::pdo();
         $unitId = (int) ($cart['unit_id'] ?? 0);
@@ -51,21 +53,65 @@ final class OrderService
             throw new \InvalidArgumentException('Carrinho inválido.');
         }
 
-        $unit = $pdo->prepare('SELECT id, delivery_fee FROM units WHERE id = :id AND is_active = 1 AND deleted_at IS NULL LIMIT 1');
+        $unit = $pdo->prepare(
+            'SELECT id, name, delivery_fee, minimum_order, business_hours, phone,
+                    address_street, address_number, address_complement, neighborhood, city, state, zip, delivery_radius_km
+             FROM units WHERE id = :id AND is_active = 1 AND deleted_at IS NULL LIMIT 1'
+        );
         $unit->execute(['id' => $unitId]);
         $u = $unit->fetch(PDO::FETCH_ASSOC);
         if ($u === false) {
             throw new \RuntimeException('Unidade indisponível.');
         }
 
-        $deliveryFee = (float) $u['delivery_fee'];
+        if (!BusinessHoursService::isOpen($u)) {
+            throw new \RuntimeException('A unidade está fechada no momento. Tente novamente no horário de funcionamento.');
+        }
+
+        $deliveryType = (string) ($options['delivery_type'] ?? 'delivery');
+        if (!in_array($deliveryType, ['delivery', 'pickup'], true)) {
+            throw new \InvalidArgumentException('Tipo de entrega inválido.');
+        }
+
+        if ($deliveryType === 'pickup') {
+            $delivery = [
+                'street' => (string) $u['address_street'],
+                'number' => (string) $u['address_number'],
+                'complement' => $u['address_complement'] ?? null,
+                'neighborhood' => (string) $u['neighborhood'],
+                'city' => (string) $u['city'],
+                'state' => (string) $u['state'],
+                'zip' => (string) $u['zip'],
+                'notes' => trim((string) ($delivery['notes'] ?? '')) !== '' ? 'Retirada: ' . trim((string) $delivery['notes']) : 'Retirada no balcão',
+            ];
+        } else {
+            DeliveryService::assertDeliverable($u, $delivery);
+        }
+
+        $deliveryFee = $deliveryType === 'pickup' ? 0.0 : (float) $u['delivery_fee'];
+        $minimumOrder = max(0, (float) ($u['minimum_order'] ?? 0));
         $lines = self::buildLines($pdo, $unitId, $cart['items']);
         $subtotal = 0.0;
         foreach ($lines as $ln) {
             $subtotal += $ln['line_total'];
         }
 
-        $total = $subtotal + $deliveryFee;
+        if ($minimumOrder > 0 && $subtotal < $minimumOrder) {
+            throw new \RuntimeException(
+                'Pedido mínimo: R$ ' . number_format($minimumOrder, 2, ',', '.') . '. Seu subtotal: R$ ' . number_format($subtotal, 2, ',', '.') . '.'
+            );
+        }
+
+        $discount = 0.0;
+        $couponId = null;
+        $couponCode = trim((string) ($options['coupon_code'] ?? ''));
+        if ($couponCode !== '') {
+            $coupon = CouponService::resolve($couponCode, $unitId, $subtotal);
+            $discount = $coupon['discount'];
+            $couponId = $coupon['id'];
+        }
+
+        $total = max(0, $subtotal - $discount + $deliveryFee);
         $method = (string) ($payment['payment_method'] ?? '');
         if (!in_array($method, ['pix', 'on_delivery'], true)) {
             throw new \InvalidArgumentException('Forma de pagamento inválida.');
@@ -96,14 +142,16 @@ final class OrderService
                     customer_name, customer_phone,
                     delivery_street, delivery_number, delivery_complement,
                     delivery_neighborhood, delivery_city, delivery_state, delivery_zip,
-                    notes, subtotal, delivery_fee, total,
+                    notes, delivery_type, coupon_id, discount_amount,
+                    subtotal, delivery_fee, total,
                     created_at, updated_at
                 ) VALUES (
                     :uid,:user_id,:onum,:track,:st,
                     :pm,:ps,:odt,:cf,
                     :cname,:cphone,
                     :dst,:dnum,:dcomp,:dnei,:dcity,:dstate,:dzip,
-                    :notes,:sub,:dfee,:tot,
+                    :notes,:dtype,:cid,:disc,
+                    :sub,:dfee,:tot,
                     NOW(),NOW()
                 )'
             );
@@ -128,10 +176,17 @@ final class OrderService
                 'dstate' => $delivery['state'],
                 'dzip' => $delivery['zip'],
                 'notes' => $delivery['notes'] ?? null,
+                'dtype' => $deliveryType,
+                'cid' => $couponId,
+                'disc' => round($discount, 2),
                 'sub' => round($subtotal, 2),
                 'dfee' => round($deliveryFee, 2),
                 'tot' => round($total, 2),
             ]);
+
+            if ($couponId !== null) {
+                CouponService::incrementUsage($pdo, $couponId);
+            }
 
             $orderId = (int) $pdo->lastInsertId();
 
@@ -203,6 +258,38 @@ final class OrderService
 
             self::notifyStatusSms($orderId, 'pendente');
 
+            $config = require dirname(__DIR__, 2) . '/config/app.php';
+            $trackUrl = rtrim((string) ($config['url'] ?? ''), '/') . '/acompanhar/' . $tracking;
+            $notifyEmail = (string) ($config['commercial_email'] ?? '');
+            if ($notifyEmail !== '' && Env::get('NOTIFY_ORDER_EMAIL', '1') === '1') {
+                EmailService::sendOrderConfirmation(
+                    $notifyEmail,
+                    ['order_number' => $orderNumber, 'total' => round($total, 2), 'customer_name' => $customer['name'], 'customer_phone' => $customer['phone']],
+                    $u,
+                    $trackUrl
+                );
+            }
+
+            if ($userId > 0 && Env::get('NOTIFY_CUSTOMER_EMAIL', '0') === '1') {
+                try {
+                    $ue = $pdo->prepare(
+                        'SELECT email FROM users WHERE id = :id AND email IS NOT NULL AND email != "" LIMIT 1'
+                    );
+                    $ue->execute(['id' => $userId]);
+                    $customerEmail = (string) ($ue->fetchColumn() ?: '');
+                    if ($customerEmail !== '' && filter_var($customerEmail, FILTER_VALIDATE_EMAIL)) {
+                        EmailService::sendCustomerOrderCreated(
+                            $customerEmail,
+                            ['order_number' => $orderNumber, 'total' => round($total, 2)],
+                            $u,
+                            $trackUrl
+                        );
+                    }
+                } catch (Throwable) {
+                    // coluna email pode não existir antes da migration 017
+                }
+            }
+
             return ['order_id' => $orderId, 'tracking_token' => $tracking, 'payment_id' => $paymentId];
         } catch (Throwable $e) {
             $pdo->rollBack();
@@ -270,6 +357,70 @@ final class OrderService
         }
 
         return $lines;
+    }
+
+    /**
+     * Cancelamento pelo cliente (apenas antes do preparo e sem pagamento PIX confirmado).
+     */
+    public static function cancelByCustomer(int $orderId, int $userId, ?string $reason = null): void
+    {
+        $pdo = Database::pdo();
+        $st = $pdo->prepare(
+            'SELECT id, status, payment_status, payment_method FROM orders
+             WHERE id = :id AND user_id = :u AND deleted_at IS NULL LIMIT 1'
+        );
+        $st->execute(['id' => $orderId, 'u' => $userId]);
+        $order = $st->fetch(PDO::FETCH_ASSOC);
+        if ($order === false) {
+            throw new \RuntimeException('Pedido não encontrado.');
+        }
+
+        $status = (string) $order['status'];
+        if (!in_array($status, ['pendente', 'confirmado'], true)) {
+            throw new \RuntimeException('Este pedido não pode mais ser cancelado pelo app.');
+        }
+
+        if (($order['payment_method'] ?? '') === 'pix' && ($order['payment_status'] ?? '') === 'pago') {
+            throw new \RuntimeException('Pedido já pago via PIX. Fale com a loja para cancelar.');
+        }
+
+        $reason = trim((string) ($reason ?? ''));
+        if ($reason === '') {
+            $reason = 'Cancelado pelo cliente';
+        }
+
+        $pdo->beginTransaction();
+        try {
+            $pdo->prepare(
+                'UPDATE orders SET status = :st, cancel_reason = :r, updated_at = NOW() WHERE id = :id'
+            )->execute(['st' => 'cancelado', 'r' => $reason, 'id' => $orderId]);
+
+            $pdo->prepare(
+                'INSERT INTO order_status_logs (order_id, status, note, actor_type, actor_id, created_at)
+                 VALUES (:oid,:st,:n,:atype,:aid,NOW())'
+            )->execute([
+                'oid' => $orderId,
+                'st' => 'cancelado',
+                'n' => $reason,
+                'atype' => 'customer',
+                'aid' => $userId,
+            ]);
+
+            if (($order['payment_method'] ?? '') === 'pix') {
+                $pdo->prepare(
+                    'UPDATE payments SET status = :st, updated_at = NOW() WHERE order_id = :oid AND type = "pix"'
+                )->execute(['st' => 'cancelado', 'oid' => $orderId]);
+            }
+
+            $pdo->commit();
+        } catch (Throwable $e) {
+            $pdo->rollBack();
+            throw $e;
+        }
+
+        AuditLogService::record('customer', $userId, 'order.cancel', 'order', $orderId, [
+            'reason' => $reason,
+        ]);
     }
 
     /**

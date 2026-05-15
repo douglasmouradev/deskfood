@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 use App\Services\PixService;
+use App\Services\RateLimitService;
 
 /**
  * Webhooks de gateways externos (PIX).
@@ -16,6 +17,13 @@ final class WebhookController extends Controller
      */
     public function pix(): void
     {
+        if (RateLimitService::isLimited('webhook_pix', 'global', 120, 60)) {
+            $this->json(['ok' => false, 'message' => 'rate limit'], 429);
+
+            return;
+        }
+        RateLimitService::hit('webhook_pix', 'global');
+
         $raw = file_get_contents('php://input') ?: '';
         $data = json_decode($raw, true);
         if (!is_array($data)) {

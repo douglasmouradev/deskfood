@@ -27,6 +27,15 @@ final class PixService
     public static function createForPayment(int $paymentId, float $amount): array
     {
         $provider = Env::get('PIX_PROVIDER', 'mock');
+
+        if ($provider === 'mercadopago') {
+            return self::createMercadoPago($paymentId, $amount);
+        }
+
+        if ($provider === 'efipay' || $provider === 'efi') {
+            return self::createEfiPay($paymentId, $amount);
+        }
+
         if ($provider !== 'mock') {
             Logger::log('warning', 'PIX provider não implementado; usando mock', ['provider' => $provider]);
         }
@@ -40,6 +49,154 @@ final class PixService
             'qr_payload' => $copy,
             'expires_at' => $expires,
             'external_id' => $txid,
+        ];
+    }
+
+    /**
+     * @return array{copy_paste:string,qr_payload:string,expires_at:string,external_id:string}
+     */
+    private static function createMercadoPago(int $paymentId, float $amount): array
+    {
+        $token = trim((string) Env::get('PIX_CLIENT_SECRET', ''));
+        if ($token === '') {
+            throw new \RuntimeException('PIX_CLIENT_SECRET não configurado para Mercado Pago.');
+        }
+
+        $txid = 'MP' . $paymentId . '-' . substr(Uuid::uuid4()->toString(), 0, 8);
+        $payload = [
+            'transaction_amount' => round($amount, 2),
+            'description' => 'Pedido Desk Food #' . $paymentId,
+            'payment_method_id' => 'pix',
+            'external_reference' => $txid,
+            'payer' => ['email' => 'cliente@deskfood.local'],
+        ];
+
+        $ch = curl_init('https://api.mercadopago.com/v1/payments');
+        if ($ch === false) {
+            throw new \RuntimeException('Falha ao iniciar requisição PIX.');
+        }
+
+        curl_setopt_array($ch, [
+            CURLOPT_POST => true,
+            CURLOPT_HTTPHEADER => [
+                'Authorization: Bearer ' . $token,
+                'Content-Type: application/json',
+                'X-Idempotency-Key: ' . $txid,
+            ],
+            CURLOPT_POSTFIELDS => json_encode($payload, JSON_THROW_ON_ERROR),
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT => 30,
+        ]);
+
+        $response = curl_exec($ch);
+        $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($code < 200 || $code >= 300) {
+            Logger::log('error', 'Mercado Pago PIX falhou', ['http' => $code, 'body' => (string) $response]);
+            throw new \RuntimeException('Não foi possível gerar cobrança PIX.');
+        }
+
+        $data = json_decode((string) $response, true);
+        $poi = $data['point_of_interaction']['transaction_data'] ?? [];
+        $copy = (string) ($poi['qr_code'] ?? '');
+        $qr = (string) ($poi['qr_code_base64'] ?? $copy);
+        $expires = (new \DateTimeImmutable('+30 minutes'))->format('Y-m-d H:i:s');
+
+        return [
+            'copy_paste' => $copy,
+            'qr_payload' => $qr,
+            'expires_at' => $expires,
+            'external_id' => (string) ($data['id'] ?? $txid),
+        ];
+    }
+
+    /**
+     * Efi Pay / Gerencianet — cobrança imediata PIX (produção: certificado mTLS pode ser exigido).
+     *
+     * @return array{copy_paste:string,qr_payload:string,expires_at:string,external_id:string}
+     */
+    private static function createEfiPay(int $paymentId, float $amount): array
+    {
+        $clientId = trim((string) Env::get('PIX_CLIENT_ID', ''));
+        $clientSecret = trim((string) Env::get('PIX_CLIENT_SECRET', ''));
+        $pixKey = trim((string) Env::get('PIX_PIX_KEY', ''));
+        if ($clientId === '' || $clientSecret === '' || $pixKey === '') {
+            throw new \RuntimeException('Configure PIX_CLIENT_ID, PIX_CLIENT_SECRET e PIX_PIX_KEY para Efi.');
+        }
+
+        $sandbox = Env::get('PIX_SANDBOX', '0') === '1';
+        $base = $sandbox ? 'https://pix-h.api.efipay.com.br' : 'https://pix.api.efipay.com.br';
+
+        $auth = base64_encode($clientId . ':' . $clientSecret);
+        $ch = curl_init($base . '/oauth/token');
+        curl_setopt_array($ch, [
+            CURLOPT_POST => true,
+            CURLOPT_HTTPHEADER => ['Authorization: Basic ' . $auth, 'Content-Type: application/json'],
+            CURLOPT_POSTFIELDS => json_encode(['grant_type' => 'client_credentials'], JSON_THROW_ON_ERROR),
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT => 20,
+        ]);
+        $authRes = curl_exec($ch);
+        $authCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+        $authData = json_decode((string) $authRes, true);
+        $accessToken = (string) ($authData['access_token'] ?? '');
+        if ($authCode < 200 || $authCode >= 300 || $accessToken === '') {
+            Logger::log('error', 'Efi OAuth falhou', ['http' => $authCode, 'body' => (string) $authRes]);
+            throw new \RuntimeException('Falha na autenticação Efi Pay.');
+        }
+
+        $txid = substr(preg_replace('/[^a-zA-Z0-9]/', '', 'DF' . $paymentId . bin2hex(random_bytes(8))), 0, 35);
+        $cobPayload = [
+            'calendario' => ['expiracao' => 1800],
+            'valor' => ['original' => number_format(round($amount, 2), 2, '.', '')],
+            'chave' => $pixKey,
+            'solicitacaoPagador' => 'Pedido Desk Food #' . $paymentId,
+        ];
+
+        $ch = curl_init($base . '/v2/cob/' . rawurlencode($txid));
+        curl_setopt_array($ch, [
+            CURLOPT_CUSTOMREQUEST => 'PUT',
+            CURLOPT_HTTPHEADER => [
+                'Authorization: Bearer ' . $accessToken,
+                'Content-Type: application/json',
+            ],
+            CURLOPT_POSTFIELDS => json_encode($cobPayload, JSON_THROW_ON_ERROR),
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT => 30,
+        ]);
+        $cobRes = curl_exec($ch);
+        $cobCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+        $cob = json_decode((string) $cobRes, true);
+        if ($cobCode < 200 || $cobCode >= 300) {
+            Logger::log('error', 'Efi cob falhou', ['http' => $cobCode, 'body' => (string) $cobRes]);
+            throw new \RuntimeException('Não foi possível criar cobrança PIX Efi.');
+        }
+
+        $copy = (string) ($cob['pixCopiaECola'] ?? '');
+        if ($copy === '' && isset($cob['loc']['id'])) {
+            $locId = (int) $cob['loc']['id'];
+            $ch2 = curl_init($base . '/v2/loc/' . $locId . '/qrcode');
+            curl_setopt_array($ch2, [
+                CURLOPT_HTTPHEADER => ['Authorization: Bearer ' . $accessToken],
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_TIMEOUT => 20,
+            ]);
+            $qrRes = curl_exec($ch2);
+            curl_close($ch2);
+            $qrData = json_decode((string) $qrRes, true);
+            $copy = (string) ($qrData['qrcode'] ?? $qrData['pixCopiaECola'] ?? '');
+        }
+
+        $expires = (new \DateTimeImmutable('+30 minutes'))->format('Y-m-d H:i:s');
+
+        return [
+            'copy_paste' => $copy,
+            'qr_payload' => $copy,
+            'expires_at' => $expires,
+            'external_id' => (string) ($cob['txid'] ?? $txid),
         ];
     }
 
@@ -150,6 +307,12 @@ final class PixService
     private static function assertWebhookAuthorized(): bool
     {
         $secret = trim((string) Env::get('PIX_WEBHOOK_SECRET', ''));
+        $env = Env::get('APP_ENV', 'production');
+        if ($env === 'production' && $secret === '') {
+            Logger::log('error', 'PIX_WEBHOOK_SECRET obrigatório em produção');
+
+            return false;
+        }
         if ($secret === '') {
             return true;
         }

@@ -38,4 +38,8 @@ return [
 
     /** Intervalo em ms para o operador verificar mudanças no quadro de pedidos (0 = desliga auto-atualização) */
     'operator_board_poll_ms' => max(0, (int) Env::get('OPERATOR_BOARD_POLL_MS', '20000')),
+
+    'analytics_ga_id' => Env::get('ANALYTICS_GA_ID', ''),
+
+    'mail_driver' => Env::get('MAIL_DRIVER', 'log'),
 ];

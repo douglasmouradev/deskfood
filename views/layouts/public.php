@@ -22,6 +22,7 @@ $baseUrl = (string) ($config['url'] ?? '');
     <title><?= htmlspecialchars($title) ?></title>
     <link rel="icon" href="/assets/img/logo.png" type="image/png">
     <link rel="apple-touch-icon" href="/assets/img/logo.png">
+    <link rel="manifest" href="/manifest.webmanifest">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600&display=swap" rel="stylesheet">
@@ -45,6 +46,7 @@ $baseUrl = (string) ($config['url'] ?? '');
         .tabular { font-family: "Space Grotesk", system-ui, sans-serif; }
         [x-cloak] { display: none !important; }
     </style>
+    <?php require BASE_PATH . '/views/partials/analytics.php'; ?>
 </head>
 <body class="min-h-full bg-slate-50 text-ink-900 antialiased">
 <header class="border-b border-slate-200 bg-white/90 backdrop-blur" x-data="{ navOpen: false }">
@@ -99,5 +101,10 @@ $baseUrl = (string) ($config['url'] ?? '');
         </div>
     </div>
 </footer>
+<script>
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js').catch(function () {});
+}
+</script>
 </body>
 </html>

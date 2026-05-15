@@ -13,6 +13,7 @@ declare(strict_types=1);
  */
 
 use App\Helpers\Env;
+use App\Services\MigrationRunner;
 
 $root = __DIR__;
 
@@ -26,6 +27,14 @@ $force = $isCli && in_array('--force', $argv, true);
 $allowInstall = Env::get('ALLOW_INSTALL', '0') === '1';
 $appEnv = Env::get('APP_ENV', 'production');
 $installedFile = $root . '/storage/.installed';
+$installed = is_file($installedFile);
+
+if (!$isCli && $installed && $appEnv === 'production' && !$allowInstall) {
+    http_response_code(403);
+    header('Content-Type: text/plain; charset=utf-8');
+    echo 'Sistema já instalado. Use CLI: php install.php';
+    exit(1);
+}
 
 if (!$isCli) {
     if ($appEnv === 'production' && !$allowInstall) {
@@ -45,7 +54,6 @@ if (!$isCli) {
     header('Content-Type: text/plain; charset=utf-8');
 }
 
-$installed = is_file($installedFile);
 $host = Env::get('DB_HOST', '127.0.0.1');
 $port = (int) Env::get('DB_PORT', '3306');
 $dbName = Env::get('DB_DATABASE', 'desk_food');
@@ -73,13 +81,12 @@ try {
     $migrationFiles = glob($root . '/database/migrations/*.sql') ?: [];
     sort($migrationFiles);
 
+    MigrationRunner::ensureTable($pdo);
+
     foreach ($migrationFiles as $file) {
-        echo "Executando migration: " . basename($file) . PHP_EOL;
-        $sql = file_get_contents($file);
-        if ($sql === false) {
-            throw new RuntimeException('Não foi possível ler: ' . $file);
-        }
-        $pdo->exec($sql);
+        $name = basename($file);
+        echo 'Executando migration: ' . $name . PHP_EOL;
+        MigrationRunner::apply($pdo, $file, $name);
     }
 
     $seed = $root . '/database/seeds/initial_data.sql';
@@ -112,9 +119,11 @@ try {
     );
 
     echo PHP_EOL . 'Instalação concluída com sucesso.' . PHP_EOL;
-    echo 'Migrations sempre reaplicáveis. Seed só roda na primeira vez ou com --force.' . PHP_EOL;
+    echo 'Migrations registradas em schema_migrations. Seed só na primeira vez ou com --force.' . PHP_EOL;
 } catch (Throwable $e) {
-    http_response_code(500);
+    if (!$isCli && !headers_sent()) {
+        http_response_code(500);
+    }
     echo 'Erro na instalação: ' . $e->getMessage() . PHP_EOL;
     exit(1);
 }

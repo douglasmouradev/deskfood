@@ -25,6 +25,11 @@ $title = $title ?? 'Admin';
         <nav class="flex flex-col gap-2 text-sm">
             <a class="rounded-lg px-3 py-2 hover:bg-white/10" href="/admin">Dashboard</a>
             <a class="rounded-lg px-3 py-2 hover:bg-white/10" href="/admin/unidades">Unidades</a>
+            <a class="rounded-lg px-3 py-2 hover:bg-white/10" href="/admin/operadores">Operadores</a>
+            <a class="rounded-lg px-3 py-2 hover:bg-white/10" href="/admin/leads">Leads</a>
+            <a class="rounded-lg px-3 py-2 hover:bg-white/10" href="/admin/cupons">Cupons</a>
+            <a class="rounded-lg px-3 py-2 hover:bg-white/10" href="/admin/relatorios">Relatórios</a>
+            <a class="rounded-lg px-3 py-2 hover:bg-white/10" href="/admin/auditoria">Auditoria</a>
             <a class="rounded-lg px-3 py-2 hover:bg-white/10" href="/ajuda">Ajuda</a>
             <a class="rounded-lg px-3 py-2 hover:bg-white/10" href="/admin/sair">Sair</a>
         </nav>

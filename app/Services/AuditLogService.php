@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Database;
+use App\Helpers\ClientIp;
 use App\Helpers\Logger;
 use PDO;
 use Throwable;
@@ -39,7 +40,7 @@ final class AuditLogService
                 'act' => $action,
                 'et' => $entityType,
                 'eid' => $entityId,
-                'ip' => $_SERVER['REMOTE_ADDR'] ?? null,
+                'ip' => ClientIp::get(),
                 'ua' => substr((string) ($_SERVER['HTTP_USER_AGENT'] ?? ''), 0, 512),
                 'det' => $details !== [] ? json_encode($details, JSON_UNESCAPED_UNICODE) : null,
             ]);
