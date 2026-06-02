@@ -1,0 +1,6 @@
+# Impede execução de scripts no diretório de uploads
+<FilesMatch "\.(php|phtml|php3|php4|php5|phar|pl|py|jsp|asp|aspx|cgi|sh)$">
+    Require all denied
+</FilesMatch>
+Options -ExecCGI
+RemoveHandler .php .phtml .php3 .php4 .php5 .phar

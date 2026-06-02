@@ -1,0 +1,45 @@
+/* Desk Food — estilos custom (Tailwind em /assets/css/tailwind.css) */
+
+[x-cloak] {
+    display: none !important;
+}
+
+/* Quadro operador — scroll horizontal em telas menores */
+.board-scroll {
+    display: flex;
+    gap: 1rem;
+    overflow-x: auto;
+    padding-bottom: 0.5rem;
+    scroll-snap-type: x proximity;
+    -webkit-overflow-scrolling: touch;
+}
+
+.board-scroll > section {
+    flex: 0 0 min(85vw, 280px);
+    scroll-snap-align: start;
+}
+
+@media (min-width: 1280px) {
+    .board-scroll {
+        overflow-x: visible;
+        scroll-snap-type: none;
+    }
+
+    .board-scroll > section {
+        flex: 1 1 0;
+        min-width: 0;
+    }
+}
+
+.board-col-body {
+    max-height: min(70vh, 520px);
+    overflow-y: auto;
+}
+
+/* Imagens do cardápio */
+.menu-product-img {
+    width: 5rem;
+    height: 5rem;
+    object-fit: cover;
+    background: #f4f4f5;
+}

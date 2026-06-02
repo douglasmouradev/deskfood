@@ -1,0 +1,2 @@
+# Bloqueia acesso HTTP se o docroot apontar para a raiz do repositório por engano.
+Require all denied

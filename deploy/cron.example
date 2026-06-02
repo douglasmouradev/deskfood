@@ -1,0 +1,11 @@
+# Crontab do usuário que roda o projeto (ex.: www-data ou deploy)
+# crontab -e
+
+# Backup MySQL diário às 3h
+0 3 * * * cd /var/www/deskfood && ./bin/backup-mysql.sh >> /var/log/deskfood-backup.log 2>&1
+
+# Limpeza semanal (login_attempts, OTP antigos, logs)
+0 4 * * 0 cd /var/www/deskfood && php bin/cleanup-old-data.php --days=90 --log-days=30 >> /var/log/deskfood-cleanup.log 2>&1
+
+# Sincronizar PIX pendentes com gateway (fallback ao webhook)
+*/3 * * * * cd /var/www/deskfood && php bin/payment-sync-pending.php >> /var/log/deskfood-payment-sync.log 2>&1

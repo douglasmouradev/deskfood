@@ -1,0 +1,56 @@
+-- Clientes, OTP e sessões persistidas
+SET NAMES utf8mb4;
+
+CREATE TABLE IF NOT EXISTS users (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  name VARCHAR(160) NOT NULL,
+  phone VARCHAR(20) NOT NULL,
+  phone_e164 VARCHAR(20) NOT NULL,
+  anonymized_at DATETIME NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  deleted_at DATETIME NULL,
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_users_phone_e164 (phone_e164),
+  KEY idx_users_phone (phone)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS otp_codes (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  phone_e164 VARCHAR(20) NOT NULL,
+  code_hash VARCHAR(255) NOT NULL,
+  expires_at DATETIME NOT NULL,
+  used_at DATETIME NULL,
+  attempts INT NOT NULL DEFAULT 0,
+  ip_address VARCHAR(45) NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_otp_phone_exp (phone_e164, expires_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS otp_send_logs (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  phone_e164 VARCHAR(20) NOT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_otp_send_phone_time (phone_e164, created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS sessions (
+  id VARCHAR(128) NOT NULL,
+  user_id BIGINT UNSIGNED NULL,
+  admin_id BIGINT UNSIGNED NULL,
+  payload MEDIUMTEXT NOT NULL,
+  last_activity INT UNSIGNED NOT NULL,
+  ip_address VARCHAR(45) NULL,
+  user_agent VARCHAR(512) NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_sessions_user (user_id),
+  KEY idx_sessions_admin (admin_id),
+  KEY idx_sessions_last_activity (last_activity),
+  CONSTRAINT fk_sessions_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  CONSTRAINT fk_sessions_admin FOREIGN KEY (admin_id) REFERENCES admins(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

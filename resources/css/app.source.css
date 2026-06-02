@@ -1,0 +1,16 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply antialiased;
+    font-family: "Plus Jakarta Sans", system-ui, sans-serif;
+  }
+}
+
+@layer utilities {
+  .tabular {
+    font-family: "Space Grotesk", system-ui, sans-serif;
+  }
+}
