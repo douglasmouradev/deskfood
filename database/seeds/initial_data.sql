@@ -43,7 +43,7 @@ ON DUPLICATE KEY UPDATE name = VALUES(name);
 
 -- Motoboy demo (CPF cifrado fictício — substitua em produção)
 INSERT INTO motoboys (id, unit_id, name, phone, cpf_encrypted, photo_path, access_token, access_token_hash, is_active) VALUES
-(1, 1, 'Carlos Entregas', '11966665555', '9f1pv010i5PR4YSRdqlFUcAN1USZT4pAMlzoenXxj7aOeITds6SW', NULL, 'demo_motoboy_token_seguro_1234567890123456789012', SHA2('demo_motoboy_token_seguro_1234567890123456789012', 256), 1)
+(1, 1, 'Carlos Entregas', '11966665555', '9f1pv010i5PR4YSRdqlFUcAN1USZT4pAMlzoenXxj7aOeITds6SW', NULL, NULL, SHA2('demo_motoboy_token_seguro_1234567890123456789012345678901234', 256), 1)
 ON DUPLICATE KEY UPDATE name = VALUES(name);
 
 -- Cupom demo (código BEMVINDO10 — 10% de desconto)

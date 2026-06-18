@@ -10,14 +10,9 @@ final class MotoboyTokenServiceTest extends TestCase
     public function testHashAndMatch(): void
     {
         $token = MotoboyTokenService::generate();
+        $this->assertSame(64, strlen($token));
         $hash = MotoboyTokenService::hash($token);
-        $this->assertTrue(MotoboyTokenService::matches($token, $hash, null));
-        $this->assertFalse(MotoboyTokenService::matches('wrong', $hash, null));
-    }
-
-    public function testLegacyPlainToken(): void
-    {
-        $token = 'abc123legacytoken012345678901234';
-        $this->assertTrue(MotoboyTokenService::matches($token, '', $token));
+        $this->assertTrue(MotoboyTokenService::matches($token, $hash));
+        $this->assertFalse(MotoboyTokenService::matches('wrong', $hash));
     }
 }

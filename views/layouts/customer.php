@@ -26,7 +26,12 @@ $headAlpine = true;
             <a class="hover:text-brand-600" href="/cliente/pedidos">Meus pedidos</a>
             <a class="hover:text-brand-600" href="/cliente/enderecos">Endereços</a>
             <a class="hover:text-brand-600" href="/cliente/lgpd">Privacidade</a>
-            <a class="rounded-full bg-brand-500 px-3 py-1 text-white hover:bg-brand-600" href="/cliente/sair">Sair</a>
+            <?php
+            $action = '/cliente/sair';
+            $class = 'inline';
+            $buttonClass = 'rounded-full bg-brand-500 px-3 py-1 text-white hover:bg-brand-600';
+            require BASE_PATH . '/views/partials/logout_form.php';
+            ?>
         </nav>
     </div>
     <div x-cloak x-show="navOpen" x-transition class="border-t border-orange-100 bg-white px-4 py-3 md:hidden">
@@ -34,7 +39,12 @@ $headAlpine = true;
             <a class="rounded-lg py-2 hover:text-brand-600" href="/cliente/pedidos" @click="navOpen=false">Meus pedidos</a>
             <a class="rounded-lg py-2 hover:text-brand-600" href="/cliente/enderecos" @click="navOpen=false">Endereços</a>
             <a class="rounded-lg py-2 hover:text-brand-600" href="/cliente/lgpd" @click="navOpen=false">Privacidade (LGPD)</a>
-            <a class="rounded-lg py-2 font-semibold text-brand-600" href="/cliente/sair" @click="navOpen=false">Sair</a>
+            <?php
+            $action = '/cliente/sair';
+            $class = 'mt-1';
+            $buttonClass = 'rounded-lg py-2 font-semibold text-brand-600 text-left w-full';
+            require BASE_PATH . '/views/partials/logout_form.php';
+            ?>
         </nav>
     </div>
 </header>

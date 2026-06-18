@@ -11,7 +11,7 @@ final class MotoboyTokenService
 {
     public static function generate(): string
     {
-        return bin2hex(random_bytes(16));
+        return bin2hex(random_bytes(32));
     }
 
     public static function hash(string $token): string
@@ -19,12 +19,8 @@ final class MotoboyTokenService
         return hash('sha256', $token);
     }
 
-    public static function matches(string $token, string $storedHash, ?string $legacyPlain = null): bool
+    public static function matches(string $token, string $storedHash): bool
     {
-        if ($storedHash !== '' && hash_equals($storedHash, self::hash($token))) {
-            return true;
-        }
-
-        return $legacyPlain !== null && $legacyPlain !== '' && hash_equals($legacyPlain, $token);
+        return $storedHash !== '' && hash_equals($storedHash, self::hash($token));
     }
 }

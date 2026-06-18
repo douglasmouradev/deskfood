@@ -67,7 +67,23 @@ try {
     $st->execute(['s' => $since]);
     $pixDeleted = $st->rowCount();
 } catch (Throwable) {
-    // tabela pode não existir em instalações antigas
+}
+
+$webhookCleared = 0;
+try {
+    $st = $pdo->prepare(
+        "UPDATE pix_transactions SET webhook_payload = NULL
+         WHERE webhook_payload IS NOT NULL AND updated_at < :s"
+    );
+    $st->execute(['s' => $since]);
+    $webhookCleared = $st->rowCount();
+    $st2 = $pdo->prepare(
+        "UPDATE card_transactions SET webhook_payload = NULL
+         WHERE webhook_payload IS NOT NULL AND updated_at < :s"
+    );
+    $st2->execute(['s' => $since]);
+    $webhookCleared += $st2->rowCount();
+} catch (Throwable) {
 }
 
 $logPath = $base . '/' . ($_ENV['LOG_PATH'] ?? 'storage/logs');
@@ -84,10 +100,11 @@ if (is_dir($logPath)) {
 }
 
 echo sprintf(
-    "Cleanup OK: login_attempts=%d, otp_codes=%d, sessions=%d, pix_transactions=%d, log_files=%d\n",
+    "Cleanup OK: login_attempts=%d, otp_codes=%d, sessions=%d, pix_transactions=%d, webhook_payloads=%d, log_files=%d\n",
     $loginDeleted,
     $otpDeleted,
     $sessionsDeleted,
     $pixDeleted,
+    $webhookCleared,
     $logsDeleted
 );

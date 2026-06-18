@@ -6,6 +6,7 @@ namespace App\Services;
 
 use App\Helpers\Env;
 use App\Helpers\Logger;
+use App\Helpers\LogSanitizer;
 
 /**
  * Integração com provedores de SMS para OTP e notificações transacionais.
@@ -23,10 +24,7 @@ final class SmsService
         $provider = (string) ($cfg['provider'] ?? 'log');
 
         if ($provider === 'log') {
-            $logged = $message;
-            if (Env::get('APP_ENV', 'production') === 'production') {
-                $logged = (string) preg_replace('/\b\d{6}\b/', '******', $message);
-            }
+            $logged = LogSanitizer::scrubString($message);
             Logger::log('info', 'SMS (log)', ['to' => $toE164, 'message' => $logged]);
 
             return true;

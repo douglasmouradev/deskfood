@@ -114,4 +114,36 @@ final class OperatorCashController extends Controller
 
         Redirect::to('/operador/caixa');
     }
+
+    /**
+     * Download autenticado do PDF de fechamento de caixa.
+     */
+    public function report(int $id): void
+    {
+        $unitId = (int) ($_SESSION['unit_id'] ?? 0);
+        $pdo = \App\Database::pdo();
+        $st = $pdo->prepare(
+            'SELECT id, unit_id, report_path FROM cash_registers WHERE id = :id AND unit_id = :u LIMIT 1'
+        );
+        $st->execute(['id' => $id, 'u' => $unitId]);
+        $row = $st->fetch(\PDO::FETCH_ASSOC);
+        if ($row === false || empty($row['report_path'])) {
+            http_response_code(404);
+            echo 'Relatório não encontrado.';
+            exit;
+        }
+
+        $abs = CashRegisterService::resolveReportAbsolutePath((string) $row['report_path']);
+        if ($abs === null) {
+            http_response_code(404);
+            echo 'Arquivo não encontrado.';
+            exit;
+        }
+
+        header('Content-Type: application/pdf');
+        header('Content-Disposition: inline; filename="caixa-' . (int) $row['id'] . '.pdf"');
+        header('X-Content-Type-Options: nosniff');
+        readfile($abs);
+        exit;
+    }
 }

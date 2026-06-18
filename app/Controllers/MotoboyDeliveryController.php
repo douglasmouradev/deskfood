@@ -99,16 +99,6 @@ final class MotoboyDeliveryController extends Controller
                 'mid' => (int) $motoboy['id'],
             ]);
 
-            $o = $pdo->prepare('SELECT payment_method FROM orders WHERE id = :id LIMIT 1');
-            $o->execute(['id' => $oid]);
-            $row = $o->fetch(\PDO::FETCH_ASSOC);
-            if ($row !== false && ($row['payment_method'] ?? '') === 'on_delivery') {
-                $pdo->prepare('UPDATE orders SET payment_status = :ps, updated_at = NOW() WHERE id = :id')
-                    ->execute(['ps' => 'confirmado_entrega', 'id' => $oid]);
-                $pdo->prepare('UPDATE payments SET status = :st, updated_at = NOW() WHERE order_id = :oid AND type = :ptype')
-                    ->execute(['st' => 'pago', 'oid' => $oid, 'ptype' => 'on_delivery']);
-            }
-
             $pdo->commit();
         } catch (\Throwable) {
             $pdo->rollBack();
@@ -135,16 +125,16 @@ final class MotoboyDeliveryController extends Controller
             'SELECT * FROM motoboys
              WHERE is_active = 1 AND deleted_at IS NULL
                AND (token_expires_at IS NULL OR token_expires_at > NOW())
-               AND (access_token_hash = :h OR access_token = :t)
+               AND access_token_hash = :h
              LIMIT 1'
         );
-        $m->execute(['h' => $hash, 't' => $token]);
+        $m->execute(['h' => $hash]);
         $row = $m->fetch(\PDO::FETCH_ASSOC);
         if ($row === false) {
             return null;
         }
 
-        if (!MotoboyTokenService::matches($token, (string) ($row['access_token_hash'] ?? ''), $row['access_token'] ?? null)) {
+        if (!MotoboyTokenService::matches($token, (string) ($row['access_token_hash'] ?? ''))) {
             return null;
         }
 

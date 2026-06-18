@@ -6,6 +6,7 @@ namespace App\Services;
 
 use App\Database;
 use PDO;
+use Ramsey\Uuid\Uuid;
 
 /**
  * Regras de caixa: abertura, sangrias, entradas automáticas e fechamento.
@@ -130,8 +131,8 @@ final class CashRegisterService
         $expected = $opening + $entradas - $sangrias;
         $diff = round($countedBalance - $expected, 2);
 
-        $relPath = 'uploads/reports/caixa-' . $registerId . '-' . date('YmdHis') . '.pdf';
-        $abs = dirname(__DIR__, 2) . '/public/' . $relPath;
+        $relPath = 'reports/' . Uuid::uuid4()->toString() . '.pdf';
+        $abs = dirname(__DIR__, 2) . '/storage/' . $relPath;
         if (!is_dir(dirname($abs))) {
             mkdir(dirname($abs), 0755, true);
         }
@@ -154,6 +155,32 @@ final class CashRegisterService
         ]);
 
         return $relPath;
+    }
+
+    /**
+     * Caminho absoluto do PDF (storage ou legado em public/uploads).
+     */
+    public static function resolveReportAbsolutePath(string $reportPath): ?string
+    {
+        $reportPath = ltrim(trim($reportPath), '/');
+        if ($reportPath === '') {
+            return null;
+        }
+
+        $base = dirname(__DIR__, 2);
+        if (str_starts_with($reportPath, 'reports/')) {
+            $abs = $base . '/storage/' . $reportPath;
+
+            return is_file($abs) ? $abs : null;
+        }
+
+        if (str_starts_with($reportPath, 'uploads/reports/')) {
+            $abs = $base . '/public/' . $reportPath;
+
+            return is_file($abs) ? $abs : null;
+        }
+
+        return null;
     }
 
     /**

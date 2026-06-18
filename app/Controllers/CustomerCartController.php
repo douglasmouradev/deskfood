@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 use App\Database;
+use App\Helpers\ClientIp;
 use App\Helpers\Csrf;
 use App\Helpers\Redirect;
 use App\Services\CartService;
+use App\Services\RateLimitService;
 
 /**
  * Carrinho de compras armazenado em sessão (por unidade).
@@ -47,6 +49,12 @@ final class CustomerCartController extends Controller
         if (!Csrf::validate()) {
             Redirect::to('/cliente/carrinho');
         }
+
+        $ip = ClientIp::get();
+        if (RateLimitService::isLimited('cart_add', $ip, 120, 3600)) {
+            Redirect::to('/cliente/carrinho');
+        }
+        RateLimitService::hit('cart_add', $ip);
 
         $unitId = (int) filter_input(INPUT_POST, 'unit_id', FILTER_VALIDATE_INT);
         $productId = (int) filter_input(INPUT_POST, 'product_id', FILTER_VALIDATE_INT);

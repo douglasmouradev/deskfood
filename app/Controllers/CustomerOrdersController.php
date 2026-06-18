@@ -245,7 +245,7 @@ final class CustomerOrdersController extends Controller
             OrderService::cancelByCustomer($id, $uid, $reason !== '' ? $reason : null);
             $_SESSION['flash_ok'] = 'Pedido cancelado.';
         } catch (\Throwable $e) {
-            $_SESSION['flash_error'] = $e->getMessage();
+            $_SESSION['flash_error'] = 'Não foi possível cancelar este pedido.';
         }
 
         Redirect::to('/cliente/pedidos');

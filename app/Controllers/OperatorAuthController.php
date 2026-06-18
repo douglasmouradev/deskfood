@@ -63,6 +63,7 @@ final class OperatorAuthController extends Controller
 
         LoginThrottleService::clearFor('operator', $email);
         session_regenerate_id(true);
+        Csrf::regenerate();
         $_SESSION['admin_id'] = (int) $row['id'];
         $_SESSION['admin_role'] = (string) $row['role'];
         $_SESSION['admin_name'] = (string) $row['name'];
@@ -77,6 +78,9 @@ final class OperatorAuthController extends Controller
      */
     public function logout(): void
     {
+        if (!Csrf::validate()) {
+            Redirect::to('/operador');
+        }
         SessionHelper::destroy();
         Redirect::to('/operador/login');
     }

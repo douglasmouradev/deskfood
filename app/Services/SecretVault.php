@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Helpers\Env;
+use App\Helpers\Logger;
+
 /**
  * Cifra credenciais de gateway antes de persistir no banco.
  */
@@ -33,6 +36,12 @@ final class SecretVault
         }
 
         if (!str_starts_with($stored, self::PREFIX)) {
+            if (Env::get('APP_ENV', 'production') === 'production') {
+                Logger::log('error', 'Segredo em texto puro no banco — migre para cifra', []);
+
+                return '';
+            }
+
             return $stored;
         }
 

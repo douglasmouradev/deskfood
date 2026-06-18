@@ -180,19 +180,19 @@ final class PaymentWebhookService
         }
 
         if (PixWebhookNormalizer::isEfiPixPayload($payload) && Env::get('PIX_EFI_TRUST_WEBHOOK', '0') === '1') {
-            return true;
-        }
+            if ($secret !== '' && self::matchesDeskfoodSecret($secret)) {
+                return true;
+            }
+            Logger::log('warning', 'PIX_EFI_TRUST_WEBHOOK ignorado sem segredo Deskfood', []);
 
-        if ($env !== 'production') {
-            return $secret === '';
-        }
-
-        if ($secret !== '') {
             return false;
         }
 
-        return self::verifyMercadoPagoSignature($rawBody)
-            || PixWebhookNormalizer::isEfiPixPayload($payload);
+        if ($env !== 'production' && $secret === '') {
+            return true;
+        }
+
+        return false;
     }
 
     private static function matchesDeskfoodSecret(string $secret): bool

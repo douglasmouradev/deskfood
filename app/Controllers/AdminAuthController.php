@@ -57,6 +57,7 @@ final class AdminAuthController extends Controller
 
         LoginThrottleService::clearFor('admin', $email);
         session_regenerate_id(true);
+        Csrf::regenerate();
         $_SESSION['admin_id'] = (int) $row['id'];
         $_SESSION['admin_role'] = (string) $row['role'];
         $_SESSION['admin_name'] = (string) $row['name'];
@@ -71,6 +72,9 @@ final class AdminAuthController extends Controller
      */
     public function logout(): void
     {
+        if (!Csrf::validate()) {
+            Redirect::to('/admin');
+        }
         SessionHelper::destroy();
         Redirect::to('/admin/login');
     }

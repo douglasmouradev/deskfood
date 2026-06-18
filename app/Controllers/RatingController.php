@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 use App\Database;
+use App\Helpers\ClientIp;
 use App\Helpers\Csrf;
 use App\Helpers\Redirect;
+use App\Services\RateLimitService;
 
 /**
  * Avaliação pública após entrega do pedido.
@@ -18,6 +20,13 @@ final class RatingController extends Controller
         if (!Csrf::validate()) {
             Redirect::to('/acompanhar/' . $token);
         }
+
+        $ip = ClientIp::get();
+        if (RateLimitService::isLimited('rating_submit', $ip, 30, 3600)) {
+            $_SESSION['flash_error'] = 'Muitas avaliações. Aguarde um pouco.';
+            Redirect::to('/acompanhar/' . $token);
+        }
+        RateLimitService::hit('rating_submit', $ip);
 
         $stars = (int) filter_input(INPUT_POST, 'stars', FILTER_VALIDATE_INT);
         $comment = trim((string) (filter_input(INPUT_POST, 'comment', FILTER_UNSAFE_RAW) ?: ''));

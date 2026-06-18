@@ -43,6 +43,7 @@ final class SecurityHeaders
             "font-src 'self' https://fonts.gstatic.com data:",
             "img-src 'self' data: https:",
             "connect-src 'self' https://viacep.com.br",
+            "object-src 'none'",
             "frame-ancestors 'self'",
             "base-uri 'self'",
             "form-action 'self'",

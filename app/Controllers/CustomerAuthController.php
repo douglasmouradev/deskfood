@@ -99,6 +99,9 @@ final class CustomerAuthController extends Controller
      */
     public function logout(): void
     {
+        if (!Csrf::validate()) {
+            Redirect::to('/cliente/pedidos');
+        }
         AuthService::logoutCustomer();
         Redirect::to('/');
     }

@@ -58,7 +58,7 @@ declare(strict_types=1);
                 #<?= (int) $h['id'] ?> · aberto <?= htmlspecialchars((string) $h['opened_at']) ?>
                 <?php if (!empty($h['closed_at'])): ?> · fechado <?= htmlspecialchars((string) $h['closed_at']) ?><?php endif; ?>
                 <?php if (!empty($h['report_path'])): ?>
-                    · <a class="text-orange-600 underline" href="/<?= htmlspecialchars(ltrim((string) $h['report_path'], '/')) ?>" target="_blank">PDF</a>
+                    · <a class="text-orange-600 underline" href="/operador/caixa/relatorio/<?= (int) $h['id'] ?>" target="_blank" rel="noopener">PDF</a>
                 <?php endif; ?>
             </li>
         <?php endforeach; ?>

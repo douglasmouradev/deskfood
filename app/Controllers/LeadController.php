@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 use App\Database;
+use App\Helpers\ClientIp;
 use App\Helpers\Csrf;
 use App\Helpers\Redirect;
 use App\Services\EmailService;
@@ -42,7 +43,13 @@ final class LeadController extends Controller
             $_SESSION['flash_error'] = 'Muitas mensagens enviadas. Tente mais tarde.';
             Redirect::to('/landing#contato');
         }
+        $clientIp = ClientIp::get();
+        if (RateLimitService::isLimited('lead_form_ip', $clientIp, 20, 3600)) {
+            $_SESSION['flash_error'] = 'Muitas mensagens deste dispositivo. Tente mais tarde.';
+            Redirect::to('/landing#contato');
+        }
         RateLimitService::hit('lead_form', $email);
+        RateLimitService::hit('lead_form_ip', $clientIp);
 
         $pdo = Database::pdo();
         $pdo->prepare(

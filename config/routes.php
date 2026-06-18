@@ -55,7 +55,7 @@ return [
     ['methods' => ['POST'], 'path' => '/cliente/login', 'handler' => [CustomerAuthController::class, 'sendOtp']],
     ['methods' => ['GET'], 'path' => '/cliente/verificar', 'handler' => [CustomerAuthController::class, 'showVerify']],
     ['methods' => ['POST'], 'path' => '/cliente/verificar', 'handler' => [CustomerAuthController::class, 'verify']],
-    ['methods' => ['GET'], 'path' => '/cliente/sair', 'handler' => [CustomerAuthController::class, 'logout']],
+    ['methods' => ['POST'], 'path' => '/cliente/sair', 'handler' => [CustomerAuthController::class, 'logout']],
 
     ['methods' => ['GET'], 'path' => '/u/{slug}', 'handler' => [CustomerMenuController::class, 'index']],
     ['methods' => ['POST'], 'path' => '/cliente/carrinho/adicionar', 'handler' => [CustomerCartController::class, 'add']],
@@ -93,7 +93,7 @@ return [
 
     ['methods' => ['GET'], 'path' => '/admin/login', 'handler' => [AdminAuthController::class, 'showLogin']],
     ['methods' => ['POST'], 'path' => '/admin/login', 'handler' => [AdminAuthController::class, 'login']],
-    ['methods' => ['GET'], 'path' => '/admin/sair', 'handler' => [AdminAuthController::class, 'logout']],
+    ['methods' => ['POST'], 'path' => '/admin/sair', 'handler' => [AdminAuthController::class, 'logout']],
 
     ['methods' => ['POST'], 'path' => '/admin/onboarding/dismiss', 'handler' => [OnboardingController::class, 'dismissAdmin'], 'middleware' => ['admin_auth']],
 
@@ -124,7 +124,7 @@ return [
 
     ['methods' => ['GET'], 'path' => '/operador/login', 'handler' => [OperatorAuthController::class, 'showLogin']],
     ['methods' => ['POST'], 'path' => '/operador/login', 'handler' => [OperatorAuthController::class, 'login']],
-    ['methods' => ['GET'], 'path' => '/operador/sair', 'handler' => [OperatorAuthController::class, 'logout']],
+    ['methods' => ['POST'], 'path' => '/operador/sair', 'handler' => [OperatorAuthController::class, 'logout']],
 
     ['methods' => ['POST'], 'path' => '/operador/onboarding/dismiss', 'handler' => [OnboardingController::class, 'dismissOperator'], 'middleware' => ['operator_auth']],
 
@@ -153,6 +153,7 @@ return [
     ['methods' => ['POST'], 'path' => '/operador/caixa/abrir', 'handler' => [OperatorCashController::class, 'open'], 'middleware' => ['operator_auth']],
     ['methods' => ['POST'], 'path' => '/operador/caixa/sangria', 'handler' => [OperatorCashController::class, 'withdraw'], 'middleware' => ['operator_auth']],
     ['methods' => ['POST'], 'path' => '/operador/caixa/fechar', 'handler' => [OperatorCashController::class, 'close'], 'middleware' => ['operator_auth']],
+    ['methods' => ['GET'], 'path' => '/operador/caixa/relatorio/{id}', 'handler' => [OperatorCashController::class, 'report'], 'middleware' => ['operator_auth']],
 
     ['methods' => ['GET'], 'path' => '/m/{token}', 'handler' => [MotoboyDeliveryController::class, 'index']],
     ['methods' => ['POST'], 'path' => '/m/{token}/entregue', 'handler' => [MotoboyDeliveryController::class, 'complete']],

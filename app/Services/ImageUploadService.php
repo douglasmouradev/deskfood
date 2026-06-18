@@ -64,11 +64,9 @@ final class ImageUploadService
         $dest = $dir . '/' . $name;
 
         if (!self::saveResized($tmp, $mime, $dest)) {
-            if (!move_uploaded_file($tmp, $dest)) {
-                Logger::log('error', 'Falha ao mover upload', ['dest' => $dest]);
+            Logger::log('error', 'Falha ao processar imagem (GD)', ['mime' => $mime]);
 
-                throw new RuntimeException('Não foi possível salvar a imagem.');
-            }
+            throw new RuntimeException('Não foi possível processar a imagem. Verifique o formato ou habilite a extensão GD.');
         }
 
         return 'uploads/products/' . $name;

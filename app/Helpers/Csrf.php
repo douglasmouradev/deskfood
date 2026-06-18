@@ -34,4 +34,12 @@ final class Csrf
 
         return hash_equals($expected, $given);
     }
+
+    /**
+     * Gera novo token após login ou ação sensível.
+     */
+    public static function regenerate(): void
+    {
+        $_SESSION['_csrf'] = bin2hex(random_bytes(32));
+    }
 }

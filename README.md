@@ -188,7 +188,7 @@ Eventos em `audit_logs` (`webhook.pix.*`).
 
 ## Motoboy
 
-Cada motoboy recebe link `APP_URL/m/{access_token}` (listado no painel do operador). Ao marcar **entregue**, o pedido vai para status `entregue` e pagamentos na entrega são confirmados no caixa, se aplicável.
+Cada motoboy recebe link `APP_URL/m/{token}` (64 caracteres; listado uma vez no painel do operador). Ao marcar **entregue**, o pedido vai para `entregue`; pagamento na entrega é confirmado pelo **operador** no caixa.
 
 ## LGPD
 
@@ -258,7 +258,9 @@ sudo certbot --nginx -d deskfood.seudominio.com.br
 - **`PIX_WEBHOOK_SECRET`** obrigatório; webhook em `POST /webhooks/payment` com header `X-Deskfood-Webhook-Secret` ou `Authorization: Bearer`.
 - `ALLOW_INSTALL=0`; migrations via CLI: `php install.php`.
 - Atrás de proxy: `TRUSTED_PROXIES` (IPs/CIDR) para IP real e cookie `secure`.
-- Opcional: `HEALTH_TOKEN` + header `X-Health-Token` em `GET /health`.
+- **`HEALTH_TOKEN`** obrigatório + header `X-Health-Token` em `GET /health`.
+- **`SESSION_IDLE_MINUTES`** (padrão 120) expira sessão por inatividade.
+- PDFs de caixa em `storage/reports/` — download só via `/operador/caixa/relatorio/{id}` autenticado.
 - Credenciais MP/Efi por unidade são **cifradas** no banco (`SecretVault`); no formulário deixe o campo vazio para manter o valor atual.
 - Links de motoboy: só hash no banco; o operador vê o URL **uma vez** ao criar/renovar.
 - Cache de cardápio: `CATALOG_CACHE_TTL` (invalida ao editar cardápio no operador).

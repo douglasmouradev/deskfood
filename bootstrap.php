@@ -13,6 +13,7 @@ use App\Helpers\Env;
 use App\Helpers\ErrorHandler;
 use App\Helpers\ExceptionHandler;
 use App\Helpers\RequestScheme;
+use App\Helpers\SessionIdle;
 use App\Services\SessionHandler;
 
 $root = __DIR__;
@@ -64,6 +65,8 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+SessionIdle::enforce();
+
 ErrorHandler::register();
 ExceptionHandler::register();
 
@@ -87,6 +90,13 @@ if ($env === 'production') {
     if ($pixSecret === '') {
         http_response_code(503);
         echo 'Configuração inválida: defina PIX_WEBHOOK_SECRET em produção.';
+        exit;
+    }
+
+    $healthToken = trim((string) Env::get('HEALTH_TOKEN', ''));
+    if ($healthToken === '') {
+        http_response_code(503);
+        echo 'Configuração inválida: defina HEALTH_TOKEN em produção.';
         exit;
     }
 }

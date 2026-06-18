@@ -25,7 +25,7 @@ final class PaymentConfirmationService
         try {
             $stmt = $pdo->prepare(
                 'SELECT p.id AS payment_id, p.type, p.status AS pay_status, p.order_id,
-                        o.status AS order_status, o.payment_status AS order_payment_status
+                        o.status AS order_status, o.payment_status AS order_payment_status, o.total AS order_total
                  FROM payments p
                  INNER JOIN orders o ON o.id = p.order_id
                  WHERE p.id = :pid
@@ -48,6 +48,18 @@ final class PaymentConfirmationService
                 return ['ok' => true, 'http' => 200, 'duplicate' => true, 'message' => 'Já processado.'];
             }
 
+            $orderTotal = (float) ($row['order_total'] ?? 0);
+            if (!PaymentWebhookValidator::amountMatchesOrderTotal($orderTotal, $payload)) {
+                $pdo->rollBack();
+                AuditLogService::record('system', null, 'webhook.payment.amount_mismatch', 'payment', $paymentId, [
+                    'expected' => $orderTotal,
+                ]);
+                Logger::log('warning', 'Webhook com valor divergente', ['payment_id' => $paymentId]);
+
+                return ['ok' => false, 'http' => 400, 'message' => 'Valor do pagamento não confere.'];
+            }
+
+            $storedPayload = self::compactWebhookPayload($payload);
             $type = (string) ($row['type'] ?? '');
             $pdo->prepare('UPDATE payments SET status = :s, updated_at = NOW() WHERE id = :id')
                 ->execute(['s' => 'pago', 'id' => $paymentId]);
@@ -57,7 +69,7 @@ final class PaymentConfirmationService
                     'UPDATE pix_transactions SET status = :s, webhook_payload = :w, updated_at = NOW() WHERE payment_id = :pid'
                 )->execute([
                     's' => 'pago',
-                    'w' => json_encode($payload, JSON_UNESCAPED_UNICODE),
+                    'w' => $storedPayload,
                     'pid' => $paymentId,
                 ]);
             }
@@ -67,7 +79,7 @@ final class PaymentConfirmationService
                     'UPDATE card_transactions SET status = :s, webhook_payload = :w, updated_at = NOW() WHERE payment_id = :pid'
                 )->execute([
                     's' => 'pago',
-                    'w' => json_encode($payload, JSON_UNESCAPED_UNICODE),
+                    'w' => $storedPayload,
                     'pid' => $paymentId,
                 ]);
             }
@@ -144,5 +156,20 @@ final class PaymentConfirmationService
         AuditLogService::record('system', null, 'webhook.payment.not_found', 'payment', null, ['external_id' => $externalId]);
 
         return ['ok' => false, 'http' => 404, 'message' => 'Transação não encontrada.'];
+    }
+
+    /**
+     * @param array<string, mixed> $payload
+     */
+    private static function compactWebhookPayload(array $payload): string
+    {
+        $compact = [
+            'txid' => $payload['txid'] ?? $payload['external_id'] ?? null,
+            'transaction_amount' => $payload['transaction_amount'] ?? null,
+            'status' => $payload['status'] ?? null,
+            'type' => $payload['type'] ?? null,
+        ];
+
+        return json_encode($compact, JSON_UNESCAPED_UNICODE) ?: '{}';
     }
 }

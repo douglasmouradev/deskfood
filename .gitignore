@@ -13,6 +13,8 @@
 !/storage/logs/.gitkeep
 /storage/backups/*
 !/storage/backups/.gitkeep
+/storage/reports/*
+!/storage/reports/.gitkeep
 /storage/cache/*
 !/storage/cache/.gitkeep
 .DS_Store

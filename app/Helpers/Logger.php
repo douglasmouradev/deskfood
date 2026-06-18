@@ -44,7 +44,7 @@ final class Logger
             $rid,
             strtoupper($level),
             $message,
-            $context !== [] ? json_encode($context, JSON_UNESCAPED_UNICODE) : ''
+            $context !== [] ? json_encode(LogSanitizer::context($context), JSON_UNESCAPED_UNICODE) : ''
         );
 
         file_put_contents($file, $line, FILE_APPEND | LOCK_EX);

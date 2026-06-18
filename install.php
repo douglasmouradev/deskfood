@@ -103,7 +103,7 @@ try {
         }
     }
 
-    foreach (['storage/logs', 'storage/cache', 'public/uploads', 'public/uploads/products', 'public/uploads/reports'] as $dir) {
+    foreach (['storage/logs', 'storage/cache', 'storage/reports', 'public/uploads', 'public/uploads/products'] as $dir) {
         $path = $root . '/' . $dir;
         if (!is_dir($path)) {
             mkdir($path, 0755, true);

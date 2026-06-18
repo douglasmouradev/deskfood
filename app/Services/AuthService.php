@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Database;
+use App\Helpers\Csrf;
 use App\Helpers\Logger;
 use App\Helpers\Phone;
 use App\Services\RateLimitService;
@@ -158,6 +159,7 @@ final class AuthService
         }
 
         session_regenerate_id(true);
+        Csrf::regenerate();
         $_SESSION['user_id'] = (int) $userId;
         unset($_SESSION['otp_pending_phone'], $_SESSION['otp_pending_name']);
 
