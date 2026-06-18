@@ -5,14 +5,14 @@ $config = require BASE_PATH . '/config/app.php';
 $appName = (string) ($config['name'] ?? 'Desk Food');
 $headTitle = ($title ?? 'Operador') . ' — ' . $appName;
 $headRobots = 'noindex, nofollow';
-$headAlpine = true;
+$headAlpine = false;
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR" class="h-full">
 <head>
     <?php require BASE_PATH . '/views/partials/head.php'; ?>
 </head>
-<body class="min-h-full bg-slate-50 text-slate-900 antialiased" x-data="{ navOpen: false }">
+<body class="min-h-full bg-slate-50 text-slate-900 antialiased">
 <div class="flex min-h-screen">
     <aside class="hidden w-60 flex-col border-r border-slate-200 bg-white p-5 md:flex">
         <div class="mb-6 flex items-center gap-2">
@@ -27,7 +27,7 @@ $headAlpine = true;
     <div class="flex min-w-0 flex-1 flex-col">
         <header class="flex items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-3 md:px-6 md:py-4">
             <div class="flex min-w-0 items-center gap-3">
-                <button type="button" class="rounded-lg border border-slate-200 p-2 text-slate-700 hover:bg-slate-50 md:hidden" @click="navOpen = !navOpen" aria-controls="nav-operator-mobile">
+                <button type="button" class="rounded-lg border border-slate-200 p-2 text-slate-700 hover:bg-slate-50 md:hidden" data-df-nav-toggle aria-expanded="false" aria-controls="nav-operator-mobile">
                     <span class="sr-only">Menu</span>
                     <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" d="M4 6h16M4 12h16M4 18h16"/></svg>
                 </button>
@@ -35,7 +35,7 @@ $headAlpine = true;
             </div>
             <a href="/operador" class="hidden text-xs font-medium text-orange-600 hover:underline sm:inline">Quadro ao vivo</a>
         </header>
-        <div x-cloak x-show="navOpen" x-transition class="border-b border-slate-200 bg-white px-4 py-3 md:hidden">
+        <div id="nav-operator-mobile" class="border-b border-slate-200 bg-white px-4 py-3 md:hidden" hidden>
             <?php require BASE_PATH . '/views/partials/nav_operator.php'; ?>
         </div>
         <main class="flex-1 p-4 md:p-6">
@@ -47,5 +47,6 @@ $headAlpine = true;
         </main>
     </div>
 </div>
+<script src="/assets/js/df-nav.js"></script>
 </body>
 </html>

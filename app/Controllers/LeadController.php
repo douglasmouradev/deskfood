@@ -34,7 +34,19 @@ final class LeadController extends Controller
         $phone = trim((string) (filter_input(INPUT_POST, 'phone', FILTER_UNSAFE_RAW) ?: ''));
         $company = trim((string) (filter_input(INPUT_POST, 'company', FILTER_UNSAFE_RAW) ?: ''));
         $message = trim((string) (filter_input(INPUT_POST, 'message', FILTER_UNSAFE_RAW) ?: ''));
+        $unitsCount = trim((string) (filter_input(INPUT_POST, 'units_count', FILTER_UNSAFE_RAW) ?: ''));
+        $ordersMonth = trim((string) (filter_input(INPUT_POST, 'orders_month', FILTER_UNSAFE_RAW) ?: ''));
+        $marketplace = trim((string) (filter_input(INPUT_POST, 'marketplace', FILTER_UNSAFE_RAW) ?: ''));
 
+        $qualification = array_filter([
+            $unitsCount !== '' ? 'Unidades: ' . $unitsCount : '',
+            $ordersMonth !== '' ? 'Pedidos/mês: ' . $ordersMonth : '',
+            $marketplace !== '' ? 'Marketplace hoje: ' . $marketplace : '',
+        ]);
+        if ($qualification !== []) {
+            $prefix = implode(' · ', $qualification);
+            $message = $message !== '' ? $prefix . "\n\n" . $message : $prefix;
+        }
         if ($name === '' || $email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
             $_SESSION['flash_error'] = 'Informe nome e e-mail válidos.';
             Redirect::to('/landing#contato');
@@ -76,6 +88,9 @@ final class LeadController extends Controller
             if ($company !== '') {
                 $body .= '<p>Empresa: ' . htmlspecialchars($company) . '</p>';
             }
+            if ($qualification !== []) {
+                $body .= '<p>' . htmlspecialchars(implode(' · ', $qualification)) . '</p>';
+            }
             if ($message !== '') {
                 $body .= '<p>' . nl2br(htmlspecialchars($message)) . '</p>';
             }
@@ -86,7 +101,7 @@ final class LeadController extends Controller
             ]);
         }
 
-        $_SESSION['flash_success'] = 'Mensagem enviada! Entraremos em contato em breve.';
+        $_SESSION['flash_success'] = 'Recebemos sua mensagem. Retornamos em até 1 dia útil com data para conversa.';
         Redirect::to('/landing#contato');
     }
 }

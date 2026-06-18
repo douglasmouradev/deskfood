@@ -190,6 +190,8 @@ Eventos em `audit_logs` (`webhook.pix.*`).
 
 Cada motoboy recebe link `APP_URL/m/{token}` (64 caracteres; listado uma vez no painel do operador). Ao marcar **entregue**, o pedido vai para `entregue`; pagamento na entrega é confirmado pelo **operador** no caixa.
 
+**Rastreamento em tempo real:** quando o operador atribui o motoboy (status `saiu_entrega`), o painel do entregador solicita permissão de GPS e envia a posição a cada ~12s. O cliente vê o mapa em `/acompanhar/{tracking_token}` com atualização a cada 10s. Histórico de coordenadas é limpo por `php bin/cleanup-old-data.php` (retenção padrão 30 dias, `LOCATION_RETENTION_DAYS` no `.env`). Em produção use **HTTPS** — o navegador exige conexão segura para geolocalização.
+
 ## LGPD
 
 - Consentimentos no cadastro (termos, privacidade, SMS).

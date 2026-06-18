@@ -96,7 +96,12 @@
 
 /* Header */
 .lp-header {
+    pointer-events: auto;
     transition: background 0.4s var(--lp-ease), border-color 0.4s var(--lp-ease), box-shadow 0.4s var(--lp-ease);
+}
+
+.lp-header.fixed {
+    z-index: 100;
 }
 
 .lp-header.is-scrolled {
@@ -124,6 +129,41 @@
 .lp-header .lp-cta:hover {
     transform: translateY(-1px);
     box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.1), 0 12px 32px var(--lp-accent-glow);
+}
+
+.lp-nav-toggle {
+    position: relative;
+    z-index: 2;
+    flex-shrink: 0;
+    touch-action: manipulation;
+    cursor: pointer;
+}
+
+.lp-mobile-nav:not([hidden]) {
+    display: block;
+}
+
+.lp-mobile-nav[hidden] {
+    display: none !important;
+}
+
+.lp-header--nav-open {
+    background: rgba(9, 9, 11, 0.95);
+    border-color: var(--lp-line);
+}
+
+body.lp-nav-open {
+    overflow: hidden;
+}
+
+@media (min-width: 1024px) {
+    .lp-mobile-nav {
+        display: none !important;
+    }
+
+    body.lp-nav-open {
+        overflow: auto;
+    }
 }
 
 .font-display {
@@ -958,7 +998,8 @@
 
 /* Contact */
 .lp-form input,
-.lp-form textarea {
+.lp-form textarea,
+.lp-form select {
     width: 100%;
     border: 1px solid #e4e4e7;
     border-radius: 0.625rem;
@@ -969,10 +1010,99 @@
 }
 
 .lp-form input:focus,
-.lp-form textarea:focus {
+.lp-form textarea:focus,
+.lp-form select:focus {
     outline: none;
     border-color: var(--lp-accent);
     box-shadow: 0 0 0 3px rgba(234, 88, 12, 0.12);
+}
+
+.lp-form select {
+    width: 100%;
+    border: 1px solid #e4e4e7;
+    border-radius: 0.625rem;
+    padding: 0.75rem 1rem;
+    font-size: 0.875rem;
+    background: #fff;
+    color: #18181b;
+}
+
+/* Demo ao vivo (hero) */
+.lp-live-demo__frame {
+    position: relative;
+    overflow: hidden;
+    border-radius: 1rem;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: #18181b;
+    box-shadow: 0 32px 64px -24px rgba(0, 0, 0, 0.65);
+    aspect-ratio: 4 / 3;
+}
+
+.lp-live-demo__frame iframe {
+    position: absolute;
+    inset: 0;
+    width: 200%;
+    height: 200%;
+    border: 0;
+    transform: scale(0.5);
+    transform-origin: top left;
+    pointer-events: none;
+}
+
+@media (min-width: 768px) {
+    .lp-live-demo__frame iframe {
+        width: 150%;
+        height: 150%;
+        transform: scale(0.667);
+    }
+}
+
+.lp-live-demo__link {
+    display: block;
+    border-radius: 0.75rem;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.04);
+    padding: 0.875rem 1rem;
+    transition: border-color 0.2s, background 0.2s;
+}
+
+.lp-live-demo__link:hover {
+    border-color: rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.07);
+}
+
+.lp-live-demo__link-title {
+    display: block;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: #fff;
+}
+
+.lp-live-demo__link-sub {
+    display: block;
+    margin-top: 0.125rem;
+    font-size: 0.6875rem;
+    color: #71717a;
+}
+
+/* Prova social */
+.lp-proof {
+    background: #fafaf9;
+    border-top: 1px solid #e4e4e7;
+    border-bottom: 1px solid #e4e4e7;
+}
+
+.lp-proof-case {
+    border-radius: 1rem;
+    border: 1px solid #e4e4e7;
+    background: #fff;
+    padding: 1.75rem;
+    box-shadow: 0 20px 40px -24px rgba(0, 0, 0, 0.1);
+}
+
+/* Cards em fundo escuro */
+.lp-band-dark .lp-card:not(.lp-card--dark) {
+    background: #fafaf9;
 }
 
 /* Footer */

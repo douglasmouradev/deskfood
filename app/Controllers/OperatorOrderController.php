@@ -41,6 +41,15 @@ final class OperatorOrderController extends Controller
             Redirect::to('/operador');
         }
 
+        if ($status === 'saiu_entrega') {
+            $del = $pdo->prepare('SELECT id FROM deliveries WHERE order_id = :oid LIMIT 1');
+            $del->execute(['oid' => $id]);
+            if ($del->fetch() === false) {
+                $_SESSION['flash_error'] = 'Atribua um motoboy antes de marcar "Saiu para entrega".';
+                Redirect::to('/operador');
+            }
+        }
+
         if ($status === 'cancelado') {
             $reason = trim((string) filter_input(INPUT_POST, 'cancel_reason', FILTER_UNSAFE_RAW));
             $pdo->prepare('UPDATE orders SET status = :s, cancel_reason = :r, updated_at = NOW() WHERE id = :id')
@@ -51,10 +60,7 @@ final class OperatorOrderController extends Controller
         }
 
         if ($status === 'entregue' && ($order['payment_method'] ?? '') === 'on_delivery') {
-            $pdo->prepare('UPDATE orders SET payment_status = :ps, updated_at = NOW() WHERE id = :id')
-                ->execute(['ps' => 'confirmado_entrega', 'id' => $id]);
-            $pdo->prepare('UPDATE payments SET status = :st, updated_at = NOW() WHERE order_id = :oid AND type = "on_delivery"')
-                ->execute(['st' => 'pago', 'oid' => $id]);
+            OrderService::confirmOnDeliveryPayment($pdo, $id, $order);
         }
 
         $pdo->prepare(
@@ -142,6 +148,11 @@ final class OperatorOrderController extends Controller
         }
 
         OrderService::notifyStatusSms($id, 'saiu_entrega');
+
+        try {
+            \App\Services\GeocodingService::ensureOrderCoordinates($id);
+        } catch (\Throwable) {
+        }
 
         Redirect::to('/operador');
     }

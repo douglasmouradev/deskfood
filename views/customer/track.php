@@ -21,10 +21,21 @@ $waPhone = preg_replace('/\D+/', '', (string) ($order['unit_phone'] ?? ''));
 if (str_starts_with($waPhone, '55') === false && strlen($waPhone) >= 10) {
     $waPhone = '55' . $waPhone;
 }
+$showLiveMap = $current === 'saiu_entrega' && ($order['delivery_type'] ?? 'delivery') === 'delivery';
+/** @var array{lat: float, lng: float}|null $map_destination */
+$mapDestination = $map_destination ?? null;
+/** @var string $google_maps_api_key */
+$googleMapsKey = (string) ($google_maps_api_key ?? '');
 ?>
-<div class="mx-auto max-w-3xl rounded-3xl border border-orange-100 bg-white p-8 shadow-xl">
-    <h1 class="text-2xl font-bold text-slate-900">Acompanhe seu pedido</h1>
-    <p class="mt-2 text-sm text-slate-600">Código <?= htmlspecialchars((string) $order['order_number']) ?> · <?= htmlspecialchars((string) ($order['unit_name'] ?? '')) ?></p>
+<?php if ($showLiveMap): ?>
+<style>
+    #track-map { min-height: 18rem; width: 100%; border-radius: 0 0 1rem 1rem; }
+</style>
+<?php endif; ?>
+<div class="df-card mx-auto max-w-3xl p-8">
+    <p class="df-eyebrow">Rastreio</p>
+    <h1 class="font-display mt-2 text-2xl font-semibold text-zinc-900">Pedido <?= htmlspecialchars((string) $order['order_number']) ?></h1>
+    <p class="mt-1 text-sm text-zinc-600"><?= htmlspecialchars((string) ($order['unit_name'] ?? '')) ?></p>
 
     <?php if (($order['payment_method'] ?? '') === 'pix'): ?>
         <p class="mt-2 text-xs text-slate-500">Pagamento: <span class="font-semibold uppercase"><?= htmlspecialchars((string) $order['payment_status']) ?></span></p>
@@ -37,9 +48,9 @@ if (str_starts_with($waPhone, '55') === false && strlen($waPhone) >= 10) {
             $active = $i === $idx;
             ?>
             <li class="flex gap-4">
-                <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold <?= $done ? 'bg-orange-500 text-white' : 'bg-slate-100 text-slate-400' ?>"><?= $i + 1 ?></span>
+                <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold <?= $done ? 'bg-zinc-900 text-white' : 'bg-zinc-100 text-zinc-400' ?>"><?= $i + 1 ?></span>
                 <div>
-                    <p class="text-sm font-semibold <?= $active ? 'text-orange-600' : 'text-slate-700' ?>"><?= htmlspecialchars($step['label']) ?></p>
+                    <p class="text-sm font-semibold <?= $active ? 'text-zinc-900' : 'text-zinc-600' ?>"><?= htmlspecialchars($step['label']) ?></p>
                     <?php if ($active): ?>
                         <p class="text-xs text-slate-500">Status atual</p>
                     <?php endif; ?>
@@ -54,6 +65,17 @@ if (str_starts_with($waPhone, '55') === false && strlen($waPhone) >= 10) {
                 <p class="text-xs uppercase text-slate-500">Entregador</p>
                 <p class="font-semibold text-slate-900"><?= htmlspecialchars((string) $order['motoboy_name']) ?></p>
             </div>
+        </div>
+    <?php endif; ?>
+
+    <?php if ($showLiveMap): ?>
+        <div class="mt-6 overflow-hidden rounded-2xl border border-zinc-200">
+            <div class="flex items-center justify-between border-b border-zinc-100 bg-zinc-50 px-4 py-2">
+                <p class="text-xs font-semibold uppercase tracking-wide text-zinc-600">Entregador no mapa</p>
+                <p id="track-map-status" class="text-xs text-zinc-500">Carregando…</p>
+            </div>
+            <div id="track-map" class="h-72 w-full bg-zinc-100" role="img" aria-label="Mapa com posição do entregador"></div>
+            <p class="border-t border-zinc-100 px-4 py-2 text-xs text-zinc-500">Abra o link do motoboy no celular e permita o GPS. Em <strong>localhost</strong>, o navegador pode bloquear localização — use o IP da rede (ex.: 192.168.x.x:8080) ou HTTPS.</p>
         </div>
     <?php endif; ?>
 
@@ -96,10 +118,26 @@ if (str_starts_with($waPhone, '55') === false && strlen($waPhone) >= 10) {
         </div>
     <?php endif; ?>
 </div>
+<?php if ($showLiveMap): ?>
+<script>
+window.__trackMapConfig = <?= json_encode([
+    'token' => $token,
+    'lastStatus' => $order['status'],
+    'showLiveMap' => $showLiveMap,
+    'mapDestination' => $mapDestination,
+    'googleMapsKey' => $googleMapsKey,
+], JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE) ?>;
+</script>
+<script src="/assets/js/track-map.js"></script>
+<?php if ($googleMapsKey !== ''): ?>
+<script async defer src="https://maps.googleapis.com/maps/api/js?key=<?= htmlspecialchars($googleMapsKey) ?>&amp;callback=dfInitTrackMap&amp;loading=async"></script>
+<?php endif; ?>
+<?php else: ?>
 <script>
     const token = <?= json_encode($token, JSON_THROW_ON_ERROR) ?>;
     let lastStatus = <?= json_encode($order['status'], JSON_THROW_ON_ERROR) ?>;
     const terminal = ['entregue', 'cancelado'];
+
     async function poll() {
         if (terminal.includes(lastStatus)) return;
         try {
@@ -114,3 +152,4 @@ if (str_starts_with($waPhone, '55') === false && strlen($waPhone) >= 10) {
         setInterval(poll, 12000);
     }
 </script>
+<?php endif; ?>

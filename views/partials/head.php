@@ -26,7 +26,7 @@ $baseUrl = (string) ($config['url'] ?? '');
 <?php if ($canonicalPath !== null && $canonicalPath !== ''): ?>
 <link rel="canonical" href="<?= htmlspecialchars($baseUrl . $canonicalPath) ?>">
 <?php endif; ?>
-<meta name="theme-color" content="#ea580c">
+<meta name="theme-color" content="#18181b">
 <title><?= htmlspecialchars($headTitle) ?></title>
 <link rel="icon" href="/assets/img/logo.png" type="image/png">
 <link rel="apple-touch-icon" href="/assets/img/logo.png">

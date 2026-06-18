@@ -86,6 +86,7 @@ return [
 
     ['methods' => ['GET'], 'path' => '/acompanhar/{token}', 'handler' => [TrackController::class, 'page']],
     ['methods' => ['GET'], 'path' => '/api/pedido/{token}/status', 'handler' => [TrackController::class, 'poll']],
+    ['methods' => ['GET'], 'path' => '/api/pedido/{token}/localizacao', 'handler' => [TrackController::class, 'location']],
     ['methods' => ['POST'], 'path' => '/acompanhar/{token}/avaliar', 'handler' => [RatingController::class, 'submit']],
 
     ['methods' => ['POST'], 'path' => '/webhooks/payment', 'handler' => [WebhookController::class, 'payment']],
@@ -157,4 +158,5 @@ return [
 
     ['methods' => ['GET'], 'path' => '/m/{token}', 'handler' => [MotoboyDeliveryController::class, 'index']],
     ['methods' => ['POST'], 'path' => '/m/{token}/entregue', 'handler' => [MotoboyDeliveryController::class, 'complete']],
+    ['methods' => ['POST'], 'path' => '/m/{token}/localizacao', 'handler' => [MotoboyDeliveryController::class, 'location']],
 ];

@@ -13,118 +13,140 @@ $unitOpen = $unitOpen ?? true;
 $defaultAddress = $defaultAddress ?? null;
 $pixAvailable = $pixAvailable ?? true;
 $cardAvailable = $cardAvailable ?? false;
+$total = is_array($enriched)
+    ? (float) $enriched['subtotal'] + (float) ($enriched['delivery_fee'] ?? 0)
+    : 0.0;
 ?>
-<h1 class="text-2xl font-bold text-slate-900">Checkout</h1>
-<?php if (is_array($enriched)): ?>
-    <p class="mt-2 text-sm text-slate-600">Subtotal: <strong>R$ <?= number_format((float) $enriched['subtotal'], 2, ',', '.') ?></strong></p>
-<?php endif; ?>
-<?php if (!$unitOpen): ?>
-    <div class="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950"><?= htmlspecialchars($hoursLabel ?? 'Unidade fechada') ?></div>
-<?php endif; ?>
-<?php if (!empty($_SESSION['flash_error'])): ?>
-    <p class="mt-3 text-sm text-red-700"><?= htmlspecialchars((string) $_SESSION['flash_error']) ?></p>
-    <?php unset($_SESSION['flash_error']); ?>
-<?php endif; ?>
+<div class="max-w-4xl">
+    <h1 class="font-display text-2xl font-semibold text-zinc-900">Finalizar pedido</h1>
+    <p class="mt-1 text-sm text-zinc-600"><?= htmlspecialchars((string) $unit['name']) ?></p>
 
-<form method="post" action="/cliente/checkout" class="mt-6 space-y-6" id="checkout-form">
-    <input type="hidden" name="_csrf" value="<?= htmlspecialchars($csrf) ?>">
-
-    <fieldset>
-        <legend class="text-sm font-semibold uppercase tracking-wide text-slate-500">Como receber</legend>
-        <div class="mt-3 flex flex-wrap gap-4 text-sm">
-            <label class="flex items-center gap-2"><input type="radio" name="delivery_type" value="delivery" checked data-delivery-toggle> Entrega</label>
-            <label class="flex items-center gap-2"><input type="radio" name="delivery_type" value="pickup" data-delivery-toggle> Retirada no balcão</label>
-        </div>
-    </fieldset>
-
-    <?php if ($addresses !== []): ?>
-        <div id="saved-addresses" class="space-y-2">
-            <p class="text-sm font-medium text-slate-700">Endereço salvo</p>
-            <?php foreach ($addresses as $i => $addr): ?>
-                <label class="flex items-start gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
-                    <input type="radio" name="saved_address_id" value="<?= (int) $addr['id'] ?>" <?= $i === 0 ? 'checked' : '' ?> class="mt-1">
-                    <span><?= htmlspecialchars((string) $addr['street']) ?>, <?= htmlspecialchars((string) $addr['number']) ?> — <?= htmlspecialchars((string) $addr['neighborhood']) ?>, <?= htmlspecialchars((string) $addr['city']) ?>/<?= htmlspecialchars((string) $addr['state']) ?></span>
-                </label>
-            <?php endforeach; ?>
-            <label class="flex items-center gap-2 text-sm text-slate-600">
-                <input type="radio" name="saved_address_id" value="0"> Usar outro endereço
-            </label>
-        </div>
+    <?php if (!$unitOpen): ?>
+        <div class="mt-4 rounded-2xl border border-amber-200/80 bg-amber-50 px-4 py-3 text-sm text-amber-950"><?= htmlspecialchars($hoursLabel ?? 'Unidade fechada') ?></div>
+    <?php endif; ?>
+    <?php if (!empty($_SESSION['flash_error'])): ?>
+        <p class="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"><?= htmlspecialchars((string) $_SESSION['flash_error']) ?></p>
+        <?php unset($_SESSION['flash_error']); ?>
     <?php endif; ?>
 
-    <div id="delivery-fields" class="grid gap-4 md:grid-cols-2">
-        <div class="md:col-span-2">
-            <label class="text-sm font-medium">CEP</label>
-            <input id="delivery_zip" name="delivery_zip" required
-                   value="<?= htmlspecialchars((string) ($defaultAddress['zip'] ?? '')) ?>"
-                   class="mt-1 w-full max-w-xs rounded-xl border border-slate-200 px-3 py-2 text-sm">
-        </div>
-        <div class="md:col-span-2">
-            <label class="text-sm font-medium">Rua</label>
-            <input id="delivery_street" name="delivery_street" required
-                   value="<?= htmlspecialchars((string) ($defaultAddress['street'] ?? '')) ?>"
-                   class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm">
-        </div>
-        <div>
-            <label class="text-sm font-medium">Número</label>
-            <input name="delivery_number" required value="<?= htmlspecialchars((string) ($defaultAddress['number'] ?? '')) ?>" class="mt-1 w-full rounded-xl border px-3 py-2 text-sm">
-        </div>
-        <div>
-            <label class="text-sm font-medium">Complemento</label>
-            <input name="delivery_complement" value="<?= htmlspecialchars((string) ($defaultAddress['complement'] ?? '')) ?>" class="mt-1 w-full rounded-xl border px-3 py-2 text-sm">
-        </div>
-        <div>
-            <label class="text-sm font-medium">Bairro</label>
-            <input id="delivery_neighborhood" name="delivery_neighborhood" required value="<?= htmlspecialchars((string) ($defaultAddress['neighborhood'] ?? '')) ?>" class="mt-1 w-full rounded-xl border px-3 py-2 text-sm">
-        </div>
-        <div>
-            <label class="text-sm font-medium">Cidade</label>
-            <input id="delivery_city" name="delivery_city" required value="<?= htmlspecialchars((string) ($defaultAddress['city'] ?? '')) ?>" class="mt-1 w-full rounded-xl border px-3 py-2 text-sm">
-        </div>
-        <div>
-            <label class="text-sm font-medium">UF</label>
-            <input id="delivery_state" name="delivery_state" maxlength="2" required value="<?= htmlspecialchars((string) ($defaultAddress['state'] ?? '')) ?>" class="mt-1 w-full rounded-xl border px-3 py-2 text-sm">
-        </div>
-        <div class="md:col-span-2">
-            <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="save_address" value="1"> Salvar este endereço</label>
-        </div>
-    </div>
+    <div class="mt-8 grid gap-8 lg:grid-cols-[1fr_300px] lg:items-start">
+        <form method="post" action="/cliente/checkout" class="space-y-8" id="checkout-form">
+            <input type="hidden" name="_csrf" value="<?= htmlspecialchars($csrf) ?>">
 
-    <div>
-        <label class="text-sm font-medium">Cupom de desconto</label>
-        <input name="coupon_code" placeholder="Código" class="mt-1 w-full max-w-xs rounded-xl border px-3 py-2 text-sm uppercase">
-    </div>
+            <section class="df-card p-5 md:p-6">
+                <h2 class="font-semibold text-zinc-900">Entrega</h2>
+                <div class="mt-4 flex flex-wrap gap-4 text-sm">
+                    <label class="flex items-center gap-2"><input type="radio" name="delivery_type" value="delivery" checked data-delivery-toggle class="text-zinc-900"> Entregar no endereço</label>
+                    <label class="flex items-center gap-2"><input type="radio" name="delivery_type" value="pickup" data-delivery-toggle class="text-zinc-900"> Retirar no balcão</label>
+                </div>
 
-    <div>
-        <label class="text-sm font-medium">Observações</label>
-        <textarea name="notes" rows="2" class="mt-1 w-full rounded-xl border px-3 py-2 text-sm"></textarea>
-    </div>
+                <?php if ($addresses !== []): ?>
+                    <div id="saved-addresses" class="mt-5 space-y-2">
+                        <p class="df-label">Endereços salvos</p>
+                        <?php foreach ($addresses as $i => $addr): ?>
+                            <label class="flex items-start gap-3 rounded-xl border border-zinc-200 px-3 py-3 text-sm has-[:checked]:border-zinc-900 has-[:checked]:bg-stone-50">
+                                <input type="radio" name="saved_address_id" value="<?= (int) $addr['id'] ?>" <?= $i === 0 ? 'checked' : '' ?> class="mt-1">
+                                <span class="text-zinc-700"><?= htmlspecialchars((string) $addr['street']) ?>, <?= htmlspecialchars((string) $addr['number']) ?> — <?= htmlspecialchars((string) $addr['neighborhood']) ?>, <?= htmlspecialchars((string) $addr['city']) ?>/<?= htmlspecialchars((string) $addr['state']) ?></span>
+                            </label>
+                        <?php endforeach; ?>
+                        <label class="flex items-center gap-2 text-sm text-zinc-600">
+                            <input type="radio" name="saved_address_id" value="0"> Informar outro endereço
+                        </label>
+                    </div>
+                <?php endif; ?>
 
-    <fieldset>
-        <legend class="text-sm font-semibold uppercase tracking-wide text-slate-500">Pagamento</legend>
-        <div class="mt-3 space-y-2 text-sm">
-            <?php if ($pixAvailable): ?>
-            <label class="flex items-center gap-2"><input type="radio" name="payment_method" value="pix" checked> PIX (QR Code)</label>
+                <div id="delivery-fields" class="mt-5 grid gap-4 md:grid-cols-2">
+                    <div class="md:col-span-2">
+                        <label class="df-label" for="delivery_zip">CEP</label>
+                        <input id="delivery_zip" name="delivery_zip" required value="<?= htmlspecialchars((string) ($defaultAddress['zip'] ?? '')) ?>" class="df-input mt-1.5 max-w-xs">
+                    </div>
+                    <div class="md:col-span-2">
+                        <label class="df-label" for="delivery_street">Rua</label>
+                        <input id="delivery_street" name="delivery_street" required value="<?= htmlspecialchars((string) ($defaultAddress['street'] ?? '')) ?>" class="df-input mt-1.5">
+                    </div>
+                    <div>
+                        <label class="df-label">Número</label>
+                        <input name="delivery_number" required value="<?= htmlspecialchars((string) ($defaultAddress['number'] ?? '')) ?>" class="df-input mt-1.5">
+                    </div>
+                    <div>
+                        <label class="df-label">Complemento</label>
+                        <input name="delivery_complement" value="<?= htmlspecialchars((string) ($defaultAddress['complement'] ?? '')) ?>" class="df-input mt-1.5">
+                    </div>
+                    <div>
+                        <label class="df-label" for="delivery_neighborhood">Bairro</label>
+                        <input id="delivery_neighborhood" name="delivery_neighborhood" required value="<?= htmlspecialchars((string) ($defaultAddress['neighborhood'] ?? '')) ?>" class="df-input mt-1.5">
+                    </div>
+                    <div>
+                        <label class="df-label" for="delivery_city">Cidade</label>
+                        <input id="delivery_city" name="delivery_city" required value="<?= htmlspecialchars((string) ($defaultAddress['city'] ?? '')) ?>" class="df-input mt-1.5">
+                    </div>
+                    <div>
+                        <label class="df-label" for="delivery_state">UF</label>
+                        <input id="delivery_state" name="delivery_state" maxlength="2" required value="<?= htmlspecialchars((string) ($defaultAddress['state'] ?? '')) ?>" class="df-input mt-1.5">
+                    </div>
+                    <div class="md:col-span-2">
+                        <label class="flex items-center gap-2 text-sm text-zinc-700"><input type="checkbox" name="save_address" value="1" class="rounded border-zinc-300"> Salvar este endereço</label>
+                    </div>
+                </div>
+            </section>
+
+            <section class="df-card p-5 md:p-6">
+                <h2 class="font-semibold text-zinc-900">Detalhes</h2>
+                <div class="mt-4 space-y-4">
+                    <div>
+                        <label class="df-label">Cupom</label>
+                        <input name="coupon_code" placeholder="Se tiver, digite aqui" class="df-input mt-1.5 max-w-xs uppercase">
+                    </div>
+                    <div>
+                        <label class="df-label">Observações para a cozinha</label>
+                        <textarea name="notes" rows="2" placeholder="Ex.: sem cebola, interfone 402" class="df-input mt-1.5"></textarea>
+                    </div>
+                </div>
+            </section>
+
+            <section class="df-card p-5 md:p-6">
+                <h2 class="font-semibold text-zinc-900">Pagamento</h2>
+                <div class="mt-4 space-y-2">
+                    <?php if ($pixAvailable): ?>
+                    <label class="pay-option"><input type="radio" name="payment_method" value="pix" checked> <span><span class="block font-medium text-zinc-900">PIX</span><span class="text-xs text-zinc-500">QR Code com confirmação automática</span></span></label>
+                    <?php endif; ?>
+                    <?php if ($cardAvailable): ?>
+                    <label class="pay-option"><input type="radio" name="payment_method" value="card" <?= !$pixAvailable ? 'checked' : '' ?>> <span><span class="block font-medium text-zinc-900">Cartão online</span><span class="text-xs text-zinc-500">Ambiente seguro Mercado Pago</span></span></label>
+                    <?php endif; ?>
+                    <label class="pay-option"><input type="radio" name="payment_method" value="on_delivery" <?= !$pixAvailable && !$cardAvailable ? 'checked' : '' ?>> <span><span class="block font-medium text-zinc-900">Na entrega</span><span class="text-xs text-zinc-500">Dinheiro ou cartão físico</span></span></label>
+                </div>
+                <?php if (!$pixAvailable && !$cardAvailable): ?>
+                <p class="mt-3 text-xs text-amber-800">Pagamento online indisponível nesta unidade.</p>
+                <?php endif; ?>
+                <div id="on_delivery_box" class="mt-4 hidden space-y-3 rounded-xl border border-zinc-100 bg-stone-50 p-4 text-sm">
+                    <label class="flex items-center gap-2"><input type="radio" name="on_delivery_type" value="cash" checked> Dinheiro</label>
+                    <label class="flex items-center gap-2"><input type="radio" name="on_delivery_type" value="card"> Cartão na entrega</label>
+                    <div>
+                        <label class="df-label">Troco para</label>
+                        <input type="number" step="0.01" name="change_for" class="df-input mt-1.5" placeholder="R$ 0,00">
+                    </div>
+                </div>
+            </section>
+
+            <button type="submit" class="df-btn-primary w-full py-3.5 lg:hidden" <?= $unitOpen ? '' : 'disabled' ?>>Confirmar pedido</button>
+        </form>
+
+        <aside class="df-summary">
+            <?php if (is_array($enriched)): ?>
+                <p class="text-sm font-medium text-zinc-500">Total estimado</p>
+                <p class="tabular mt-2 text-3xl font-semibold text-zinc-900">R$ <?= number_format($total, 2, ',', '.') ?></p>
+                <dl class="df-divider mt-4 space-y-2 pt-4 text-sm">
+                    <div class="flex justify-between"><dt class="text-zinc-600">Subtotal</dt><dd class="tabular">R$ <?= number_format((float) $enriched['subtotal'], 2, ',', '.') ?></dd></div>
+                    <?php if ((float) $enriched['delivery_fee'] > 0): ?>
+                    <div class="flex justify-between"><dt class="text-zinc-600">Entrega</dt><dd class="tabular">R$ <?= number_format((float) $enriched['delivery_fee'], 2, ',', '.') ?></dd></div>
+                    <?php endif; ?>
+                </dl>
             <?php endif; ?>
-            <?php if ($cardAvailable): ?>
-            <label class="flex items-center gap-2"><input type="radio" name="payment_method" value="card" <?= !$pixAvailable ? 'checked' : '' ?>> Cartão de crédito (online)</label>
-            <?php endif; ?>
-            <label class="flex items-center gap-2"><input type="radio" name="payment_method" value="on_delivery" <?= !$pixAvailable && !$cardAvailable ? 'checked' : '' ?>> Na entrega</label>
-        </div>
-        <?php if (!$pixAvailable && !$cardAvailable): ?>
-        <p class="mt-2 text-xs text-amber-700">Pagamento online indisponível nesta unidade — use pagamento na entrega ou configure credenciais no painel admin.</p>
-        <?php endif; ?>
-        <div id="on_delivery_box" class="mt-4 hidden space-y-2 rounded-xl border bg-slate-50 p-3 text-sm">
-            <label class="flex items-center gap-2"><input type="radio" name="on_delivery_type" value="cash" checked> Dinheiro</label>
-            <label class="flex items-center gap-2"><input type="radio" name="on_delivery_type" value="card"> Cartão</label>
-            <label class="block">Troco para quanto?
-                <input type="number" step="0.01" name="change_for" class="mt-1 w-full rounded-lg border px-2 py-1">
-            </label>
-        </div>
-    </fieldset>
-
-    <button type="submit" class="w-full rounded-full bg-orange-500 py-3 text-sm font-semibold text-white disabled:opacity-50" <?= $unitOpen ? '' : 'disabled' ?>>Confirmar pedido</button>
-</form>
+            <button type="submit" form="checkout-form" class="df-btn-primary mt-6 hidden w-full py-3.5 lg:inline-flex" <?= $unitOpen ? '' : 'disabled' ?>>Confirmar pedido</button>
+            <p class="mt-4 text-center text-[11px] leading-relaxed text-zinc-400">Ao confirmar, você concorda com os termos da loja e da plataforma.</p>
+        </aside>
+    </div>
+</div>
 
 <script>
 (function () {

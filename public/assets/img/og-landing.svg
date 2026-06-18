@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-label="Desk Food  Delivery próprio para restaurantes">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#09090b"/>
+      <stop offset="100%" stop-color="#18181b"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <rect x="80" y="80" width="1040" height="470" rx="24" fill="#fafaf9" fill-opacity="0.04" stroke="#ffffff" stroke-opacity="0.08"/>
+  <text x="100" y="200" fill="#ffffff" font-family="system-ui, sans-serif" font-size="28" font-weight="600" letter-spacing="0.12em">DESK FOOD</text>
+  <text x="100" y="290" fill="#ffffff" font-family="system-ui, sans-serif" font-size="56" font-weight="700">Seu delivery.</text>
+  <text x="100" y="360" fill="#ffffff" font-family="system-ui, sans-serif" font-size="56" font-weight="700">Sua marca.</text>
+  <text x="100" y="430" fill="#fb923c" font-family="system-ui, sans-serif" font-size="56" font-weight="700">Sua margem.</text>
+  <text x="100" y="500" fill="#a1a1aa" font-family="system-ui, sans-serif" font-size="24">Cardápio · PIX · Painel da cozinha</text>
+</svg>

@@ -13,7 +13,7 @@ use PDO;
  */
 final class OperatorDashboardController extends Controller
 {
-    private const ORDER_BOARD_COLUMNS = 'id, unit_id, order_number, status, payment_method, payment_status, total, customer_name, customer_phone, delivery_type, motoboy_id, notes, created_at, updated_at';
+    private const ORDER_BOARD_COLUMNS = 'o.id, o.unit_id, o.order_number, o.status, o.payment_method, o.payment_status, o.total, o.customer_name, o.customer_phone, o.delivery_type, o.notes, o.created_at, o.updated_at, d.motoboy_id';
 
     public function index(): void
     {
@@ -123,7 +123,12 @@ final class OperatorDashboardController extends Controller
     {
         $cols = self::ORDER_BOARD_COLUMNS;
         $st = $pdo->prepare(
-            "SELECT {$cols} FROM orders WHERE unit_id = :u AND deleted_at IS NULL ORDER BY created_at DESC LIMIT 80"
+            "SELECT {$cols}
+             FROM orders o
+             LEFT JOIN deliveries d ON d.order_id = o.id
+             WHERE o.unit_id = :u AND o.deleted_at IS NULL
+             ORDER BY o.created_at DESC
+             LIMIT 80"
         );
         $st->execute(['u' => $unitId]);
 

@@ -30,7 +30,6 @@ $cardPend = ($order['payment_method'] ?? '') === 'card' && ($order['payment_stat
                 $opts = [
                     'confirmado' => 'Confirmado',
                     'em_preparo' => 'Em preparo',
-                    'saiu_entrega' => 'Saiu entrega',
                     'entregue' => 'Entregue',
                     'cancelado' => 'Cancelado',
                 ];

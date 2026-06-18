@@ -27,7 +27,7 @@ return [
     /** Texto padrão para <meta name="description"> em páginas públicas sem descrição própria */
     'default_meta_description' => Env::get(
         'APP_META_DESCRIPTION',
-        'Desk Food — delivery multi-unidade com PIX, caixa, motoboys, OTP e LGPD. Peça nas unidades ativas ou conheça a plataforma para o seu restaurante.'
+        'Desk Food — pedido online direto com o restaurante. Cardápio, PIX e rastreio em um só lugar.'
     ),
 
     /** Dados de contato comercial (rodapé, landing, ajuda) */
@@ -40,6 +40,9 @@ return [
     'operator_board_poll_ms' => max(0, (int) Env::get('OPERATOR_BOARD_POLL_MS', '20000')),
 
     'analytics_ga_id' => Env::get('ANALYTICS_GA_ID', ''),
+
+    /** Chave da Google Maps JavaScript API (mapa de rastreio ao vivo) */
+    'google_maps_api_key' => Env::get('GOOGLE_MAPS_API_KEY', ''),
 
     'mail_driver' => Env::get('MAIL_DRIVER', 'log'),
 ];

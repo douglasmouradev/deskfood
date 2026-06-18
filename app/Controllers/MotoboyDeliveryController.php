@@ -8,6 +8,7 @@ use App\Database;
 use App\Helpers\Csrf;
 use App\Helpers\DbDate;
 use App\Helpers\Redirect;
+use App\Services\DeliveryLocationService;
 use App\Services\MotoboyTokenService;
 use App\Services\OrderService;
 use App\Services\RateLimitService;
@@ -39,6 +40,7 @@ final class MotoboyDeliveryController extends Controller
         $today = DbDate::todayWhere('o.created_at');
         $st = $pdo->prepare(
             "SELECT o.id, o.order_number, o.status, o.payment_method, o.payment_status, o.total, o.customer_name,
+                    o.delivery_street, o.delivery_number, o.delivery_neighborhood, o.delivery_city,
                     d.id AS delivery_id, d.status AS delivery_status
              FROM deliveries d
              INNER JOIN orders o ON o.id = d.order_id
@@ -83,11 +85,18 @@ final class MotoboyDeliveryController extends Controller
         }
 
         $oid = (int) $del['order_id'];
+        $orderSt = $pdo->prepare('SELECT * FROM orders WHERE id = :id LIMIT 1');
+        $orderSt->execute(['id' => $oid]);
+        $order = $orderSt->fetch(\PDO::FETCH_ASSOC);
+
         $pdo->beginTransaction();
         try {
             $pdo->prepare('UPDATE deliveries SET status = :s, delivered_at = NOW(), updated_at = NOW() WHERE id = :id')
                 ->execute(['s' => 'delivered', 'id' => $deliveryId]);
             $pdo->prepare('UPDATE orders SET status = :st, updated_at = NOW() WHERE id = :id')->execute(['st' => 'entregue', 'id' => $oid]);
+            if (is_array($order)) {
+                OrderService::confirmOnDeliveryPayment($pdo, $oid, $order);
+            }
             $pdo->prepare(
                 'INSERT INTO order_status_logs (order_id, status, note, actor_type, actor_id, created_at)
                  VALUES (:oid,:st,:n,:atype,:mid,NOW())'
@@ -113,6 +122,65 @@ final class MotoboyDeliveryController extends Controller
         OrderService::notifyStatusSms($oid, 'entregue');
 
         Redirect::to('/m/' . $token);
+    }
+
+    /**
+     * Recebe coordenadas GPS do entregador (JSON).
+     */
+    public function location(string $token): void
+    {
+        $hashId = substr(hash('sha256', $token), 0, 16);
+        if (RateLimitService::isLimited('motoboy_location', $hashId, 480, 3600)) {
+            $this->json(['ok' => false, 'message' => 'Muitas atualizações'], 429);
+
+            return;
+        }
+        RateLimitService::hit('motoboy_location', $hashId);
+
+        $raw = file_get_contents('php://input') ?: '';
+        try {
+            /** @var array<string, mixed> $body */
+            $body = json_decode($raw, true, 64, JSON_THROW_ON_ERROR);
+        } catch (\Throwable) {
+            $this->json(['ok' => false, 'message' => 'JSON inválido'], 400);
+
+            return;
+        }
+
+        $deliveryId = (int) ($body['delivery_id'] ?? 0);
+        $lat = filter_var($body['lat'] ?? null, FILTER_VALIDATE_FLOAT);
+        $lng = filter_var($body['lng'] ?? null, FILTER_VALIDATE_FLOAT);
+        $accuracy = isset($body['accuracy']) ? filter_var($body['accuracy'], FILTER_VALIDATE_FLOAT) : null;
+
+        if ($deliveryId <= 0 || $lat === false || $lng === false) {
+            $this->json(['ok' => false, 'message' => 'Dados incompletos'], 400);
+
+            return;
+        }
+
+        $pdo = Database::pdo();
+        $motoboy = self::findActiveMotoboy($pdo, $token);
+        if ($motoboy === null) {
+            $this->json(['ok' => false, 'message' => 'Link inválido'], 404);
+
+            return;
+        }
+
+        $result = DeliveryLocationService::record(
+            $deliveryId,
+            (int) $motoboy['id'],
+            (float) $lat,
+            (float) $lng,
+            $accuracy === false ? null : (float) $accuracy
+        );
+
+        if (!$result['ok']) {
+            $this->json($result, 400);
+
+            return;
+        }
+
+        $this->json(['ok' => true]);
     }
 
     /**

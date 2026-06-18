@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 use App\Database;
+use App\Services\DeliveryLocationService;
+use App\Services\GeocodingService;
 use App\Services\RateLimitService;
 
 /**
@@ -35,10 +37,19 @@ final class TrackController extends Controller
             $rating = null;
         }
 
+        $mapDestination = null;
+        if (($order['status'] ?? '') === 'saiu_entrega' && ($order['delivery_type'] ?? 'delivery') === 'delivery') {
+            $mapDestination = GeocodingService::ensureOrderCoordinates((int) $order['id']);
+        }
+
+        $cfg = require dirname(__DIR__, 2) . '/config/app.php';
+
         $this->view('customer/track', [
             'order' => self::sanitizeForPublic($order),
             'token' => $token,
             'rating' => $rating,
+            'map_destination' => $mapDestination,
+            'google_maps_api_key' => (string) ($cfg['google_maps_api_key'] ?? ''),
             'csrf' => \App\Helpers\Csrf::token(),
             'flash_ok' => $_SESSION['flash_ok'] ?? null,
             'flash_error' => $_SESSION['flash_error'] ?? null,
@@ -76,6 +87,28 @@ final class TrackController extends Controller
             ] : null,
             'updated_at' => $public['updated_at'],
         ]);
+    }
+
+    /**
+     * Posição do entregador para mapa em tempo real (polling).
+     */
+    public function location(string $token): void
+    {
+        if (RateLimitService::isLimited('track_location', substr($token, 0, 32), 240, 3600)) {
+            $this->json(['ok' => false, 'message' => 'Muitas consultas. Aguarde.'], 429);
+
+            return;
+        }
+        RateLimitService::hit('track_location', substr($token, 0, 32));
+
+        $data = DeliveryLocationService::getPublicTracking($token);
+        if ($data === null) {
+            $this->json(['ok' => false, 'message' => 'Não encontrado'], 404);
+
+            return;
+        }
+
+        $this->json(['ok' => true] + $data);
     }
 
     /**

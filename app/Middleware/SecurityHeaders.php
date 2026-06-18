@@ -24,13 +24,13 @@ final class SecurityHeaders
         header('X-Frame-Options: SAMEORIGIN');
         header('X-Content-Type-Options: nosniff');
         header('Referrer-Policy: strict-origin-when-cross-origin');
-        header('Permissions-Policy: geolocation=(), microphone=(), camera=()');
+        header('Permissions-Policy: geolocation=(self), microphone=(), camera=()');
 
         $tailwindCdn = \App\Helpers\Env::get('TAILWIND_CDN', '0') === '1'
             || !is_file(BASE_PATH . '/public/assets/css/tailwind.css');
 
-        $scriptSrc = "'self' 'unsafe-inline' https://cdn.jsdelivr.net";
-        $styleSrc = "'self' 'unsafe-inline' https://fonts.googleapis.com";
+        $scriptSrc = "'self' 'unsafe-inline' https://cdn.jsdelivr.net https://maps.googleapis.com https://maps.gstatic.com";
+        $styleSrc = "'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net https://maps.googleapis.com";
         if ($tailwindCdn) {
             $scriptSrc .= ' https://cdn.tailwindcss.com';
             $styleSrc .= ' https://cdn.tailwindcss.com';
@@ -42,7 +42,7 @@ final class SecurityHeaders
             "style-src {$styleSrc}",
             "font-src 'self' https://fonts.gstatic.com data:",
             "img-src 'self' data: https:",
-            "connect-src 'self' https://viacep.com.br",
+            "connect-src 'self' https://viacep.com.br https://nominatim.openstreetmap.org https://*.openstreetmap.org https://maps.googleapis.com",
             "object-src 'none'",
             "frame-ancestors 'self'",
             "base-uri 'self'",

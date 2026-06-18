@@ -78,28 +78,49 @@ final class OperatorMotoboyController extends Controller
     public function revokeToken(int $id): void
     {
         if (!Csrf::validate()) {
+            $_SESSION['flash_error'] = 'Sessão expirada. Atualize a página e tente novamente.';
+            Redirect::to('/operador/motoboys');
+        }
+
+        if ($id <= 0) {
+            $_SESSION['flash_error'] = 'Motoboy inválido.';
             Redirect::to('/operador/motoboys');
         }
 
         $unitId = (int) ($_SESSION['unit_id'] ?? 0);
+        $pdo = Database::pdo();
+
+        $check = $pdo->prepare(
+            'SELECT id, name FROM motoboys WHERE id = :id AND unit_id = :u AND deleted_at IS NULL LIMIT 1'
+        );
+        $check->execute(['id' => $id, 'u' => $unitId]);
+        $motoboy = $check->fetch(\PDO::FETCH_ASSOC);
+        if ($motoboy === false) {
+            $_SESSION['flash_error'] = 'Motoboy não encontrado nesta unidade.';
+            Redirect::to('/operador/motoboys');
+        }
+
         $token = MotoboyTokenService::generate();
         $hash = MotoboyTokenService::hash($token);
         $expires = (new \DateTimeImmutable('+90 days'))->format('Y-m-d H:i:s');
 
-        $pdo = Database::pdo();
         $st = $pdo->prepare(
             'UPDATE motoboys SET access_token = NULL, access_token_hash = :h, token_expires_at = :exp, updated_at = NOW()
              WHERE id = :id AND unit_id = :u AND deleted_at IS NULL'
         );
         $st->execute(['h' => $hash, 'exp' => $expires, 'id' => $id, 'u' => $unitId]);
+
         if ($st->rowCount() > 0) {
             AuditLogService::record('operator', (int) ($_SESSION['admin_id'] ?? 0), 'motoboy.token_revoke', 'motoboy', $id, []);
             $cfg = require dirname(__DIR__, 2) . '/config/app.php';
             $_SESSION['motoboy_link_flash'] = [
-                'name' => 'Motoboy #' . $id,
+                'name' => (string) ($motoboy['name'] ?? ('Motoboy #' . $id)),
                 'url' => rtrim((string) $cfg['url'], '/') . '/m/' . $token,
                 'expires' => $expires,
             ];
+            $_SESSION['flash_success'] = 'Novo link gerado. Copie abaixo e envie ao entregador.';
+        } else {
+            $_SESSION['flash_error'] = 'Não foi possível renovar o link. Tente atualizar a página.';
         }
 
         Redirect::to('/operador/motoboys');

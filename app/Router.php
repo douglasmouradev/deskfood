@@ -89,7 +89,7 @@ final class Router
             if (is_array($handler) && count($handler) === 2) {
                 [$class, $action] = $handler;
                 $controller = new $class();
-                $controller->{$action}(...array_values($args));
+                $controller->{$action}(...$this->coerceHandlerArgs($class, (string) $action, $args));
 
                 return;
             }
@@ -166,6 +166,55 @@ final class Router
         }
 
         return $compiled;
+    }
+
+    /**
+     * Converte parâmetros da URL para os tipos declarados no controller (ex.: `{id}` → int).
+     *
+     * @param array<string, mixed> $args
+     * @return list<mixed>
+     */
+    private function coerceHandlerArgs(string $class, string $action, array $args): array
+    {
+        if (!class_exists($class) || !method_exists($class, $action)) {
+            return array_values($args);
+        }
+
+        try {
+            $method = new \ReflectionMethod($class, $action);
+        } catch (\ReflectionException) {
+            return array_values($args);
+        }
+
+        $coerced = [];
+        foreach ($method->getParameters() as $param) {
+            $name = $param->getName();
+            if (!array_key_exists($name, $args)) {
+                if ($param->isDefaultValueAvailable()) {
+                    $coerced[] = $param->getDefaultValue();
+                }
+
+                continue;
+            }
+
+            $value = $args[$name];
+            $type = $param->getType();
+            if ($type instanceof \ReflectionNamedType && !$type->isBuiltin()) {
+                $coerced[] = $value;
+                continue;
+            }
+
+            $typeName = $type instanceof \ReflectionNamedType ? $type->getName() : null;
+            $coerced[] = match ($typeName) {
+                'int' => is_int($value) ? $value : (int) filter_var($value, FILTER_VALIDATE_INT),
+                'float' => is_float($value) ? $value : (float) filter_var($value, FILTER_VALIDATE_FLOAT),
+                'bool' => filter_var($value, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) ?? (bool) $value,
+                'string' => (string) $value,
+                default => $value,
+            };
+        }
+
+        return $coerced;
     }
 
     /**

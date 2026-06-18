@@ -20,9 +20,9 @@ final class DeliveryService
             return;
         }
 
-        $unitCity = mb_strtolower(trim((string) ($unit['city'] ?? '')));
+        $unitCity = \App\Helpers\Str::lower(trim((string) ($unit['city'] ?? '')));
         $unitState = strtoupper(trim((string) ($unit['state'] ?? '')));
-        $delCity = mb_strtolower(trim((string) ($delivery['city'] ?? '')));
+        $delCity = \App\Helpers\Str::lower(trim((string) ($delivery['city'] ?? '')));
         $delState = strtoupper(trim((string) ($delivery['state'] ?? '')));
 
         if ($unitCity === '' || $delCity === '') {

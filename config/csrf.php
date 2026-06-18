@@ -10,4 +10,6 @@ declare(strict_types=1);
 return [
     '#^/webhooks/#',
     '#^/health$#',
+    // Motoboy autentica pelo token na URL; JSON sem sessão de formulário.
+    '#^/m/.+/localizacao$#',
 ];

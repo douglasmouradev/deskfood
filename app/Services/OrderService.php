@@ -482,6 +482,31 @@ final class OrderService
     }
 
     /**
+     * Confirma pagamento na entrega após o pedido ser marcado como entregue.
+     *
+     * @param array<string, mixed>|null $order Linha de orders (opcional)
+     */
+    public static function confirmOnDeliveryPayment(PDO $pdo, int $orderId, ?array $order = null): void
+    {
+        if ($order === null) {
+            $st = $pdo->prepare('SELECT payment_method FROM orders WHERE id = :id LIMIT 1');
+            $st->execute(['id' => $orderId]);
+            $row = $st->fetch(PDO::FETCH_ASSOC);
+            $order = $row !== false ? $row : [];
+        }
+
+        if (($order['payment_method'] ?? '') !== 'on_delivery') {
+            return;
+        }
+
+        $pdo->prepare('UPDATE orders SET payment_status = :ps, updated_at = NOW() WHERE id = :id')
+            ->execute(['ps' => 'confirmado_entrega', 'id' => $orderId]);
+        $pdo->prepare(
+            'UPDATE payments SET status = :st, updated_at = NOW() WHERE order_id = :oid AND type = "on_delivery"'
+        )->execute(['st' => 'pago', 'oid' => $orderId]);
+    }
+
+    /**
      * Envia SMS opcional ao cliente quando o status do pedido muda.
      */
     public static function notifyStatusSms(int $orderId, string $status): void

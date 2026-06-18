@@ -11,23 +11,23 @@ final class Redirect
 {
     /**
      * Encerra a execução após enviar cabeçalho Location.
+     *
+     * Caminhos internos (começando com /) são relativos ao host atual da requisição,
+     * preservando sessão quando APP_URL difere do host usado no navegador (ex.: localhost vs IP LAN).
      */
     public static function to(string $path): void
     {
-        $config = require dirname(__DIR__, 2) . '/config/app.php';
-        $base = rtrim((string) ($config['url'] ?? ''), '/');
-
         if (str_starts_with($path, 'http://') || str_starts_with($path, 'https://')) {
-            $url = $path;
-        } else {
-            $path = $path === '' ? '/' : $path;
-            if ($path[0] !== '/') {
-                $path = '/' . $path;
-            }
-            $url = $base . $path;
+            header('Location: ' . $path, true, 302);
+            exit;
         }
 
-        header('Location: ' . $url, true, 302);
+        $path = $path === '' ? '/' : $path;
+        if ($path[0] !== '/') {
+            $path = '/' . $path;
+        }
+
+        header('Location: ' . $path, true, 302);
         exit;
     }
 }

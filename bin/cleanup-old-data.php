@@ -99,12 +99,20 @@ if (is_dir($logPath)) {
     }
 }
 
+$locationsDeleted = 0;
+try {
+    $locDays = max(7, (int) ($_ENV['LOCATION_RETENTION_DAYS'] ?? 30));
+    $locationsDeleted = \App\Services\DeliveryLocationService::purgeOlderThan($locDays);
+} catch (Throwable) {
+}
+
 echo sprintf(
-    "Cleanup OK: login_attempts=%d, otp_codes=%d, sessions=%d, pix_transactions=%d, webhook_payloads=%d, log_files=%d\n",
+    "Cleanup OK: login_attempts=%d, otp_codes=%d, sessions=%d, pix_transactions=%d, webhook_payloads=%d, delivery_locations=%d, log_files=%d\n",
     $loginDeleted,
     $otpDeleted,
     $sessionsDeleted,
     $pixDeleted,
     $webhookCleared,
+    $locationsDeleted,
     $logsDeleted
 );

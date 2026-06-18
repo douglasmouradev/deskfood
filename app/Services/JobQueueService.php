@@ -25,14 +25,19 @@ final class JobQueueService
 
         $pdo = Database::pdo();
         $available = (new \DateTimeImmutable('+' . max(0, $delaySeconds) . ' seconds'))->format('Y-m-d H:i:s');
-        $pdo->prepare(
-            'INSERT INTO background_jobs (job_type, payload, available_at, created_at, updated_at)
-             VALUES (:t, :p, :a, NOW(), NOW())'
-        )->execute([
-            't' => $type,
-            'p' => json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR),
-            'a' => $available,
-        ]);
+        try {
+            $pdo->prepare(
+                'INSERT INTO background_jobs (job_type, payload, available_at, created_at, updated_at)
+                 VALUES (:t, :p, :a, NOW(), NOW())'
+            )->execute([
+                't' => $type,
+                'p' => json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR),
+                'a' => $available,
+            ]);
+        } catch (Throwable $e) {
+            Logger::log('warning', 'job_queue_fallback_sync', ['type' => $type, 'message' => $e->getMessage()]);
+            self::execute($type, $payload);
+        }
     }
 
     /**
