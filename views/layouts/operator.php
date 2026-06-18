@@ -16,7 +16,7 @@ $headAlpine = true;
 <div class="flex min-h-screen">
     <aside class="hidden w-60 flex-col border-r border-slate-200 bg-white p-5 md:flex">
         <div class="mb-6 flex items-center gap-2">
-            <img src="/assets/img/logo.png" class="h-8 w-auto" alt="">
+            <img src="/assets/img/logo.png" class="h-8 w-auto" alt="<?= htmlspecialchars($appName ?? 'Desk Food') ?>">
             <div class="leading-tight">
                 <span class="block text-xs font-semibold text-orange-600"><?= htmlspecialchars($appName) ?></span>
                 <span class="text-sm font-semibold text-slate-900">Operação</span>

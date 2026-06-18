@@ -2,7 +2,8 @@
 declare(strict_types=1);
 /** @var string $__content_path */
 $config = require BASE_PATH . '/config/app.php';
-$headTitle = ($title ?? 'Cliente') . ' · ' . ($config['name'] ?? 'Desk Food');
+$appName = (string) ($config['name'] ?? 'Desk Food');
+$headTitle = ($title ?? 'Cliente') . ' · ' . $appName;
 $headRobots = 'noindex, nofollow';
 $headAlpine = true;
 ?>
@@ -15,7 +16,7 @@ $headAlpine = true;
 <header class="border-b border-orange-100 bg-white/90 backdrop-blur">
     <div class="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-4">
         <a href="/" class="flex min-w-0 items-center gap-3">
-            <img src="/assets/img/logo.png" alt="" class="h-9 w-auto shrink-0">
+            <img src="/assets/img/logo.png" alt="<?= htmlspecialchars($appName ?? 'Desk Food') ?>" class="h-9 w-auto shrink-0">
             <span class="truncate font-semibold"><?= htmlspecialchars((string) ($config['name'] ?? 'Desk Food')) ?></span>
         </a>
         <button type="button" class="rounded-lg border border-slate-200 p-2 text-slate-700 hover:bg-slate-50 md:hidden" @click="navOpen = !navOpen" aria-controls="nav-customer">

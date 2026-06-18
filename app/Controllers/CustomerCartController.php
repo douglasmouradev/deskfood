@@ -8,6 +8,7 @@ use App\Database;
 use App\Helpers\ClientIp;
 use App\Helpers\Csrf;
 use App\Helpers\Redirect;
+use App\Services\CartPersistenceService;
 use App\Services\CartService;
 use App\Services\RateLimitService;
 
@@ -31,6 +32,7 @@ final class CustomerCartController extends Controller
         }
 
         $enriched = is_array($unit) ? CartService::enrich(is_array($cart) ? $cart : null, $unit) : null;
+        $layout = empty($_SESSION['user_id']) ? 'customer_guest' : 'customer';
 
         $this->view('customer/cart', [
             'cart' => $cart,
@@ -38,7 +40,7 @@ final class CustomerCartController extends Controller
             'enriched' => $enriched,
             'csrf' => Csrf::token(),
             'title' => 'Carrinho',
-        ], 'customer');
+        ], $layout);
     }
 
     /**
@@ -74,6 +76,7 @@ final class CustomerCartController extends Controller
         }
 
         CartService::addItem($_SESSION['cart'], $productId, $qty, $addons);
+        CartPersistenceService::save($_SESSION['cart']);
 
         $slug = $this->lookupUnitSlug($unitId);
         Redirect::to('/u/' . $slug . '?added=1');
@@ -108,6 +111,7 @@ final class CustomerCartController extends Controller
         }
         $cart['items'] = $newItems;
         $_SESSION['cart'] = $cart;
+        CartPersistenceService::save($cart);
 
         Redirect::to('/cliente/carrinho');
     }

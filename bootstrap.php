@@ -14,6 +14,7 @@ use App\Helpers\ErrorHandler;
 use App\Helpers\ExceptionHandler;
 use App\Helpers\RequestScheme;
 use App\Helpers\SessionIdle;
+use App\Services\CartPersistenceService;
 use App\Services\SessionHandler;
 
 $root = __DIR__;
@@ -66,6 +67,7 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 SessionIdle::enforce();
+CartPersistenceService::hydrateSession();
 
 ErrorHandler::register();
 ExceptionHandler::register();

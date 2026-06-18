@@ -11,13 +11,6 @@ $boardPollMs = (int) ($boardPollMs ?? 0);
 $boardRevision = (string) ($boardRevision ?? '');
 $activeTotal = count($board['novos']) + count($board['confirmados']) + count($board['em_preparo'])
     + count($board['saiu']) + count($board['pendentes']);
-$cols = [
-    ['id' => 'pendentes', 'title' => 'Pendentes', 'hint' => 'PIX aguardando', 'ring' => 'ring-amber-200', 'head' => 'bg-amber-50 text-amber-950', 'badge' => 'bg-amber-700 text-white', 'list' => $board['pendentes']],
-    ['id' => 'novos', 'title' => 'Novos', 'hint' => 'Aguardando confirmação', 'ring' => 'ring-slate-200', 'head' => 'bg-slate-50 text-slate-800', 'badge' => 'bg-slate-800 text-white', 'list' => $board['novos']],
-    ['id' => 'confirmados', 'title' => 'Confirmados', 'hint' => 'Aceitos pela loja', 'ring' => 'ring-sky-200', 'head' => 'bg-sky-50 text-sky-950', 'badge' => 'bg-sky-700 text-white', 'list' => $board['confirmados']],
-    ['id' => 'em_preparo', 'title' => 'Em preparo', 'hint' => 'Cozinha', 'ring' => 'ring-orange-200', 'head' => 'bg-orange-50 text-orange-950', 'badge' => 'bg-orange-600 text-white', 'list' => $board['em_preparo']],
-    ['id' => 'saiu', 'title' => 'Saiu p/ entrega', 'hint' => 'Motoboy', 'ring' => 'ring-emerald-200', 'head' => 'bg-emerald-50 text-emerald-950', 'badge' => 'bg-emerald-600 text-white', 'list' => $board['saiu']],
-];
 ?>
 <p class="text-sm text-slate-600">Unidade: <span class="font-semibold text-slate-900"><?= htmlspecialchars((string) ($unit['name'] ?? '')) ?></span></p>
 
@@ -26,6 +19,11 @@ $cols = [
         Quadro ao vivo — pedidos aparecem nas colunas conforme o status<?= $boardPollMs > 0 ? ' (atualização a cada ' . (int) round($boardPollMs / 1000) . 's)' : '' ?>.
     </p>
 <?php endif; ?>
+
+<div class="mt-4 flex items-center justify-end gap-2 md:hidden">
+    <button type="button" class="board-view-toggle rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700" data-board-view="kanban" aria-pressed="true">Colunas</button>
+    <button type="button" class="board-view-toggle rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700" data-board-view="list" aria-pressed="false">Lista</button>
+</div>
 
 <div id="board-live" class="mt-6">
     <?php require BASE_PATH . '/views/operator/partials/board_columns.php'; ?>
@@ -72,6 +70,7 @@ $cols = [
                     lastNovos = j.counts.novos;
                     notifyNew();
                 }
+                bindBoardViewToggles();
             }).catch(function () {}).finally(function () { boardBusy = false; });
     }
     function onBoardEvent(j) {
@@ -80,26 +79,29 @@ $cols = [
         if (j.counts && j.counts.novos > lastNovos) notifyNew();
         refreshBoard(true);
     }
-    if (typeof EventSource !== 'undefined') {
-        var es = new EventSource('/operador/api/quadro-stream');
-        es.addEventListener('board', function (ev) {
-            try { onBoardEvent(JSON.parse(ev.data)); } catch (e) {}
+    var pollMs = <?= (int) $boardPollMs ?>;
+    setInterval(function () {
+        fetch('/operador/api/quadro-rev', { credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
+            .then(function (r) { return r.json(); })
+            .then(function (j) {
+                if (!j || !j.ok || !j.rev || j.rev === lastRev) return;
+                onBoardEvent(j);
+            }).catch(function () {});
+    }, pollMs);
+    function bindBoardViewToggles() {
+        document.querySelectorAll('.board-view-toggle').forEach(function (btn) {
+            btn.onclick = function () {
+                var view = btn.getAttribute('data-board-view');
+                var scroll = document.querySelector('#board-live .board-scroll');
+                if (!scroll) return;
+                scroll.classList.toggle('board-scroll--list', view === 'list');
+                document.querySelectorAll('.board-view-toggle').forEach(function (b) {
+                    b.setAttribute('aria-pressed', (b === btn).toString());
+                });
+            };
         });
-        es.onerror = function () { es.close(); fallbackPoll(); };
-    } else {
-        fallbackPoll();
     }
-    function fallbackPoll() {
-        var pollMs = <?= (int) $boardPollMs ?>;
-        setInterval(function () {
-            fetch('/operador/api/quadro-rev', { credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
-                .then(function (r) { return r.json(); })
-                .then(function (j) {
-                    if (!j || !j.ok || !j.rev || j.rev === lastRev) return;
-                    onBoardEvent(j);
-                }).catch(function () {});
-        }, pollMs);
-    }
+    bindBoardViewToggles();
     if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
         Notification.requestPermission();
     }

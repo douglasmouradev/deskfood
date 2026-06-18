@@ -16,7 +16,7 @@ $headAlpine = true;
 <div class="flex min-h-screen">
     <aside class="hidden w-64 flex-col border-r border-slate-200 bg-slate-900 p-6 text-slate-100 md:flex">
         <div class="mb-8 flex items-center gap-2">
-            <img src="/assets/img/logo.png" class="h-9 w-auto brightness-0 invert" alt="">
+            <img src="/assets/img/logo.png" class="h-9 w-auto brightness-0 invert" alt="<?= htmlspecialchars($appName ?? 'Desk Food') ?>">
             <span class="font-semibold">Dono</span>
         </div>
         <?php require BASE_PATH . '/views/partials/nav_admin.php'; ?>

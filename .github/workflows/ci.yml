@@ -42,11 +42,20 @@ jobs:
           php-version: '8.3'
           extensions: pdo_mysql, openssl, json, mbstring, curl
 
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: npm ci and build
+        run: npm ci && npm run build
+
       - name: Composer install
         run: composer install --no-interaction --no-progress
 
       - name: Composer audit
-        run: composer audit --no-ansi || true
+        run: composer audit --no-ansi
 
       - name: Run migrations
         run: php install.php

@@ -55,7 +55,7 @@ declare(strict_types=1);
                 <div class="flex flex-wrap items-center justify-between gap-3">
                     <span class="flex items-center gap-3">
                         <?php if (!empty($p['image_path'])): ?>
-                            <img src="/<?= htmlspecialchars(ltrim((string) $p['image_path'], '/')) ?>" alt="" class="h-10 w-10 rounded-lg object-cover">
+                            <img src="/<?= htmlspecialchars(ltrim((string) $p['image_path'], '/')) ?>" alt="<?= htmlspecialchars((string) ($p['name'] ?? 'Produto')) ?>" class="h-10 w-10 rounded-lg object-cover">
                         <?php endif; ?>
                         <span>
                             <?= htmlspecialchars((string) $p['name']) ?>

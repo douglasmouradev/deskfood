@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Middleware;
 
+use App\Database;
 use App\Helpers\Redirect;
+use App\Helpers\SessionHelper;
 
 /**
  * Protege rotas administrativas exigindo sessão de `admins` e papel correto.
@@ -32,6 +34,8 @@ final class AdminAuth
             Redirect::to('/');
         }
 
+        self::assertAdminStillActive((int) $_SESSION['admin_id']);
+
         return true;
     }
 
@@ -46,6 +50,25 @@ final class AdminAuth
             Redirect::to('/admin/login');
         }
 
+        self::assertAdminStillActive((int) $_SESSION['admin_id']);
+
         return true;
+    }
+
+    private static function assertAdminStillActive(int $adminId): void
+    {
+        if ($adminId <= 0) {
+            return;
+        }
+
+        $st = Database::pdo()->prepare(
+            'SELECT is_active FROM admins WHERE id = :id AND deleted_at IS NULL LIMIT 1'
+        );
+        $st->execute(['id' => $adminId]);
+        $active = $st->fetchColumn();
+        if ($active === false || (int) $active !== 1) {
+            SessionHelper::destroy();
+            Redirect::to('/admin/login');
+        }
     }
 }

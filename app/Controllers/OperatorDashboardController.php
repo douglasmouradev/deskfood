@@ -31,7 +31,7 @@ final class OperatorDashboardController extends Controller
         $mb = $motoboys->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
         $touch = self::maxOrdersTouch($pdo, $unitId);
-        $boardRevision = self::computeBoardRevision($board, $touch);
+        $boardRevision = self::lightBoardRevision($pdo, $unitId, $touch);
         $pollMs = max(0, (int) Env::get('OPERATOR_BOARD_POLL_MS', '20000'));
 
         $this->view('operator/dashboard', [
@@ -55,77 +55,28 @@ final class OperatorDashboardController extends Controller
         }
 
         $pdo = Database::pdo();
-        $orders = self::loadOrdersForUnit($pdo, $unitId);
-        $board = self::partitionOrdersForBoard($orders);
         $touch = self::maxOrdersTouch($pdo, $unitId);
-        $rev = self::computeBoardRevision($board, $touch);
+        $rev = self::lightBoardRevision($pdo, $unitId, $touch);
+        $counts = self::quickBoardCounts($pdo, $unitId);
 
         $this->json([
             'ok' => true,
             'rev' => $rev,
-            'counts' => [
-                'novos' => count($board['novos']),
-                'confirmados' => count($board['confirmados']),
-                'em_preparo' => count($board['em_preparo']),
-                'saiu' => count($board['saiu']),
-                'pendentes' => count($board['pendentes']),
-                'finalizados' => count($board['finalizados']),
-            ],
+            'counts' => array_merge($counts, ['finalizados' => 0]),
         ]);
     }
 
     /**
-     * Server-Sent Events: envia nova revisão quando o quadro muda (substitui reload completo).
+     * SSE descontinuado — use poll em /operador/api/quadro-rev (evita esgotar PHP-FPM).
      */
     public function boardStream(): void
     {
-        $unitId = (int) ($_SESSION['unit_id'] ?? 0);
-        if ($unitId <= 0) {
-            http_response_code(403);
-            exit;
-        }
-
-        header('Content-Type: text/event-stream');
-        header('Cache-Control: no-cache');
-        header('Connection: keep-alive');
-        header('X-Accel-Buffering: no');
-
-        if (function_exists('session_write_close')) {
-            session_write_close();
-        }
-
-        $pdo = Database::pdo();
-        $lastRev = '';
-        $iterations = 0;
-        $maxIter = 90;
-
-        while ($iterations < $maxIter && !connection_aborted()) {
-            $rev = self::quickBoardRevision($pdo, $unitId);
-
-            if ($rev !== $lastRev) {
-                $counts = self::quickBoardCounts($pdo, $unitId);
-                $payload = json_encode([
-                    'rev' => $rev,
-                    'counts' => $counts,
-                ], JSON_THROW_ON_ERROR);
-                echo "event: board\n";
-                echo 'data: ' . $payload . "\n\n";
-                if (ob_get_level() > 0) {
-                    ob_flush();
-                }
-                flush();
-                $lastRev = $rev;
-            } else {
-                echo ": ping\n\n";
-                if (ob_get_level() > 0) {
-                    ob_flush();
-                }
-                flush();
-            }
-
-            sleep(2);
-            ++$iterations;
-        }
+        http_response_code(410);
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode([
+            'ok' => false,
+            'message' => 'Use polling em /operador/api/quadro-rev',
+        ], JSON_UNESCAPED_UNICODE);
         exit;
     }
 
@@ -145,7 +96,7 @@ final class OperatorDashboardController extends Controller
         $orders = self::loadOrdersForUnit($pdo, $unitId);
         $board = self::partitionOrdersForBoard($orders);
         $touch = self::maxOrdersTouch($pdo, $unitId);
-        $rev = self::computeBoardRevision($board, $touch);
+        $rev = self::lightBoardRevision($pdo, $unitId, $touch);
 
         $motoboys = $pdo->prepare('SELECT id, name FROM motoboys WHERE unit_id = :u AND is_active = 1 AND deleted_at IS NULL');
         $motoboys->execute(['u' => $unitId]);
@@ -180,20 +131,23 @@ final class OperatorDashboardController extends Controller
     }
 
     /**
-     * Revisão leve para SSE (sem carregar todos os pedidos).
+     * Revisão leve (contagens SQL + touch) — alinhada entre poll e HTML.
      */
-    private static function quickBoardRevision(PDO $pdo, int $unitId): string
+    private static function lightBoardRevision(PDO $pdo, int $unitId, ?string $touch = null): string
     {
-        $touch = self::maxOrdersTouch($pdo, $unitId);
-        $st = $pdo->prepare(
-            'SELECT status, payment_method, payment_status, COUNT(*) AS c
-             FROM orders WHERE unit_id = :u AND deleted_at IS NULL
-             GROUP BY status, payment_method, payment_status'
-        );
-        $st->execute(['u' => $unitId]);
-        $groups = $st->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        $counts = self::quickBoardCounts($pdo, $unitId);
+        $touch ??= self::maxOrdersTouch($pdo, $unitId);
+        $payload = [
+            'n' => $counts['novos'],
+            'c' => $counts['confirmados'],
+            'e' => $counts['em_preparo'],
+            's' => $counts['saiu'],
+            'x' => $counts['pendentes'],
+            'f' => 0,
+            't' => $touch,
+        ];
 
-        return hash('sha256', json_encode(['t' => $touch, 'g' => $groups], JSON_THROW_ON_ERROR));
+        return hash('sha256', json_encode($payload, JSON_THROW_ON_ERROR));
     }
 
     /**
@@ -201,15 +155,26 @@ final class OperatorDashboardController extends Controller
      */
     private static function quickBoardCounts(PDO $pdo, int $unitId): array
     {
-        $orders = self::loadOrdersForUnit($pdo, $unitId);
-        $board = self::partitionOrdersForBoard($orders);
+        $pendingExpr = "((payment_method = 'pix' AND payment_status = 'pendente') OR (payment_method = 'card' AND payment_status = 'pendente'))";
+        $st = $pdo->prepare(
+            "SELECT
+                SUM(CASE WHEN {$pendingExpr} THEN 1 ELSE 0 END) AS pendentes,
+                SUM(CASE WHEN status = 'pendente' AND NOT {$pendingExpr} THEN 1 ELSE 0 END) AS novos,
+                SUM(CASE WHEN status = 'confirmado' AND NOT {$pendingExpr} THEN 1 ELSE 0 END) AS confirmados,
+                SUM(CASE WHEN status = 'em_preparo' AND NOT {$pendingExpr} THEN 1 ELSE 0 END) AS em_preparo,
+                SUM(CASE WHEN status = 'saiu_entrega' AND NOT {$pendingExpr} THEN 1 ELSE 0 END) AS saiu
+             FROM orders
+             WHERE unit_id = :u AND deleted_at IS NULL AND status NOT IN ('entregue', 'cancelado')"
+        );
+        $st->execute(['u' => $unitId]);
+        $row = $st->fetch(PDO::FETCH_ASSOC) ?: [];
 
         return [
-            'novos' => count($board['novos']),
-            'confirmados' => count($board['confirmados']),
-            'em_preparo' => count($board['em_preparo']),
-            'saiu' => count($board['saiu']),
-            'pendentes' => count($board['pendentes']),
+            'novos' => (int) ($row['novos'] ?? 0),
+            'confirmados' => (int) ($row['confirmados'] ?? 0),
+            'em_preparo' => (int) ($row['em_preparo'] ?? 0),
+            'saiu' => (int) ($row['saiu'] ?? 0),
+            'pendentes' => (int) ($row['pendentes'] ?? 0),
         ];
     }
 
@@ -222,24 +187,6 @@ final class OperatorDashboardController extends Controller
         $v = $st->fetchColumn();
 
         return $v !== false && $v !== null ? (string) $v : '';
-    }
-
-    /**
-     * @param array{novos:list,confirmados:list,em_preparo:list,saiu:list,pendentes:list,finalizados:list} $board
-     */
-    private static function computeBoardRevision(array $board, string $maxUpdated): string
-    {
-        $payload = [
-            'n' => count($board['novos']),
-            'c' => count($board['confirmados']),
-            'e' => count($board['em_preparo']),
-            's' => count($board['saiu']),
-            'x' => count($board['pendentes']),
-            'f' => count($board['finalizados']),
-            't' => $maxUpdated,
-        ];
-
-        return hash('sha256', json_encode($payload, JSON_THROW_ON_ERROR));
     }
 
     /**

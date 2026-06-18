@@ -9,6 +9,7 @@ use App\Helpers\Csrf;
 use App\Helpers\Redirect;
 use App\Services\AddressService;
 use App\Services\BusinessHoursService;
+use App\Services\CartPersistenceService;
 use App\Services\CartService;
 use App\Services\OrderService;
 use App\Services\RateLimitService;
@@ -173,6 +174,7 @@ final class CustomerCheckoutController extends Controller
         }
 
         $_SESSION['cart'] = ['unit_id' => (int) $cart['unit_id'], 'items' => []];
+        CartPersistenceService::clear();
 
         if ($paymentMethod === 'pix') {
             Redirect::to('/cliente/pedido/' . $created['order_id'] . '/pix');

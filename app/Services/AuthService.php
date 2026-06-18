@@ -8,6 +8,7 @@ use App\Database;
 use App\Helpers\Csrf;
 use App\Helpers\Logger;
 use App\Helpers\Phone;
+use App\Services\JobQueueService;
 use App\Services\RateLimitService;
 use PDO;
 use Throwable;
@@ -79,7 +80,7 @@ final class AuthService
         }
 
         $msg = sprintf('Seu código Desk Food: %s (expira em %d minutos)', $code, self::OTP_TTL_MINUTES);
-        SmsService::send($e164, $msg);
+        JobQueueService::dispatch('sms', ['to' => $e164, 'message' => $msg]);
 
         $_SESSION['otp_pending_phone'] = $e164;
         $_SESSION['otp_pending_name'] = $name;

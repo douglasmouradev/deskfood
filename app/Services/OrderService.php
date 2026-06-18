@@ -8,6 +8,7 @@ use App\Database;
 use App\Helpers\Env;
 use App\Helpers\Logger;
 use App\Services\AuditLogService;
+use App\Services\JobQueueService;
 use PDO;
 use Throwable;
 
@@ -503,6 +504,6 @@ final class OrderService
         }
 
         $msg = sprintf('Desk Food: pedido %s agora está em "%s".', $row['order_number'], $status);
-        SmsService::send($e164, $msg);
+        JobQueueService::dispatch('sms', ['to' => $e164, 'message' => $msg]);
     }
 }

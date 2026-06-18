@@ -9,6 +9,7 @@ use App\Helpers\ClientIp;
 use App\Helpers\Csrf;
 use App\Helpers\Redirect;
 use App\Services\EmailService;
+use App\Services\JobQueueService;
 use App\Services\RateLimitService;
 
 /**
@@ -78,7 +79,11 @@ final class LeadController extends Controller
             if ($message !== '') {
                 $body .= '<p>' . nl2br(htmlspecialchars($message)) . '</p>';
             }
-            EmailService::send($commercial, 'Novo lead Desk Food — ' . $name, $body);
+            JobQueueService::dispatch('email', [
+                'to' => $commercial,
+                'subject' => 'Novo lead Desk Food — ' . $name,
+                'body' => $body,
+            ]);
         }
 
         $_SESSION['flash_success'] = 'Mensagem enviada! Entraremos em contato em breve.';

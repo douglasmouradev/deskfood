@@ -36,6 +36,20 @@
     overflow-y: auto;
 }
 
+/* Modo lista no mobile (operador) */
+@media (max-width: 767px) {
+    .board-scroll.board-scroll--list {
+        flex-direction: column;
+        overflow-x: visible;
+    }
+
+    .board-scroll.board-scroll--list > section {
+        flex: 1 1 auto;
+        width: 100%;
+        max-width: none;
+    }
+}
+
 /* Imagens do cardápio */
 .menu-product-img {
     width: 5rem;

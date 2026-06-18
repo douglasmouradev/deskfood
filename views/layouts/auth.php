@@ -14,7 +14,7 @@ $headRobots = 'noindex, nofollow';
 <body class="min-h-full bg-gradient-to-b from-orange-50/80 to-slate-50 text-slate-900 antialiased">
 <div class="mx-auto flex min-h-screen max-w-md flex-col justify-center px-4 py-12">
     <a href="/" class="mb-8 flex flex-col items-center gap-3 text-center">
-        <img src="/assets/img/logo.png" alt="" class="h-12 w-auto">
+        <img src="/assets/img/logo.png" alt="<?= htmlspecialchars($appName ?? 'Desk Food') ?>" class="h-12 w-auto">
         <span class="text-sm font-semibold text-slate-900"><?= htmlspecialchars($appName) ?></span>
     </a>
     <?php require BASE_PATH . '/views/partials/flash.php'; ?>

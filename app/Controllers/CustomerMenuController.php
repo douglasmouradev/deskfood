@@ -56,6 +56,7 @@ final class CustomerMenuController extends Controller
 
         $isOpen = BusinessHoursService::isOpen($unit);
         $hoursLabel = BusinessHoursService::statusLabel($unit);
+        $layout = empty($_SESSION['user_id']) ? 'customer_guest' : 'customer';
 
         $this->view('customer/menu', [
             'unit' => $unit,
@@ -66,6 +67,6 @@ final class CustomerMenuController extends Controller
             'unitOpen' => $isOpen,
             'hoursLabel' => $hoursLabel,
             'title' => (string) $unit['name'],
-        ], 'customer');
+        ], $layout);
     }
 }

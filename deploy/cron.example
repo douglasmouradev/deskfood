@@ -9,3 +9,6 @@
 
 # Sincronizar PIX pendentes com gateway (fallback ao webhook)
 */3 * * * * cd /var/www/deskfood && php bin/payment-sync-pending.php >> /var/log/deskfood-payment-sync.log 2>&1
+
+# Worker da fila (SMS/e-mail) — requer JOBS_ASYNC=1 no .env
+* * * * * cd /var/www/deskfood && php bin/worker.php >> /var/log/deskfood-worker.log 2>&1

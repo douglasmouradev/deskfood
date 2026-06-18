@@ -25,6 +25,12 @@ final class ExceptionHandler
             'line' => $e->getLine(),
         ]);
 
+        ErrorReporter::capture('Exceção não tratada: ' . $e->getMessage(), [
+            'file' => $e->getFile(),
+            'line' => $e->getLine(),
+            'trace' => $e->getTraceAsString(),
+        ]);
+
         if (!headers_sent()) {
             http_response_code(500);
         }

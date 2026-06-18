@@ -19,7 +19,7 @@ abstract class Controller
      * Renderiza uma view opcionalmente com layout padrão administrativo.
      *
      * @param array<string, mixed> $data Variáveis injetadas na view
-     * @param 'admin'|'operator'|'customer'|'motoboy'|'public'|'landing'|'auth'|null $layout Qual layout utilizar
+     * @param 'admin'|'operator'|'customer'|'customer_guest'|'motoboy'|'public'|'landing'|'auth'|null $layout Qual layout utilizar
      */
     protected function view(string $name, array $data = [], ?string $layout = 'public'): void
     {
@@ -33,6 +33,7 @@ abstract class Controller
             'admin' => 'admin',
             'operator' => 'operator',
             'customer' => 'customer',
+            'customer_guest' => 'customer_guest',
             'motoboy' => 'motoboy',
             'landing' => 'landing',
             'auth' => 'auth',

@@ -5,7 +5,7 @@ declare(strict_types=1);
 ?>
 <div class="mx-auto max-w-md rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
     <div class="flex items-center gap-3">
-        <img src="/assets/img/logo.png" class="h-10 w-auto" alt="">
+        <img src="/assets/img/logo.png" class="h-10 w-auto" alt="Desk Food">
         <div>
             <p class="text-sm font-semibold text-slate-900">Desk Food</p>
             <p class="text-xs text-slate-500">Painel do dono</p>

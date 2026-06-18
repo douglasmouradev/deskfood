@@ -53,7 +53,7 @@ $unitOpen = $unitOpen ?? true;
                     <div class="rounded-2xl border border-orange-100 bg-white p-4 shadow-sm" x-show="!q || <?= json_encode(mb_strtolower((string) $p['name']), JSON_THROW_ON_ERROR) ?>.includes(q.toLowerCase())">
                         <div class="flex gap-3">
                             <?php if (!empty($p['image_path'])): ?>
-                                <img src="/<?= htmlspecialchars(ltrim((string) $p['image_path'], '/')) ?>" alt="" width="80" height="80" loading="lazy" decoding="async" class="menu-product-img shrink-0 rounded-xl">
+                                <img src="/<?= htmlspecialchars(ltrim((string) $p['image_path'], '/')) ?>" alt="<?= htmlspecialchars((string) ($p['name'] ?? 'Produto')) ?>" width="80" height="80" loading="lazy" decoding="async" class="menu-product-img shrink-0 rounded-xl">
                             <?php endif; ?>
                             <div class="min-w-0 flex-1">
                                 <div class="flex items-start justify-between gap-3">

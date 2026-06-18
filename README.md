@@ -204,7 +204,13 @@ Cada motoboy recebe link `APP_URL/m/{token}` (64 caracteres; listado uma vez no 
 
 ## Painel do operador (tempo real)
 
-- `GET /operador/api/quadro-rev` — JSON com `rev` (hash do quadro) e contadores; usado para recarregar **Pedidos ao vivo** quando há mudança. Intervalo em `OPERATOR_BOARD_POLL_MS` no `.env` (0 desliga o auto-refresh).
+- `GET /operador/api/quadro-rev` — JSON com `rev` (hash do quadro) e contadores; usado para recarregar **Pedidos ao vivo** quando há mudança. Intervalo em `OPERATOR_BOARD_POLL_MS` no `.env` (0 desliga o auto-refresh). SSE (`/operador/api/quadro-stream`) foi descontinuado — use apenas polling.
+
+## Fila de jobs e carrinho persistido
+
+- **`JOBS_ASYNC=1`** — SMS e e-mails são enfileirados em `background_jobs` em vez de bloquear a requisição. Processe com `php bin/worker.php` (cron a cada minuto; ver `deploy/cron.example`).
+- **`CART_PERSIST=1`** (padrão) — carrinho salvo em `session_carts` (sobrevive a restart de sessão). Hidratação automática no `bootstrap.php`.
+- **`ERROR_WEBHOOK_URL`** (opcional) — erros não tratados são enviados para Slack ou ingest compatível com Sentry.
 
 ## Estrutura principal
 
@@ -264,7 +270,7 @@ sudo certbot --nginx -d deskfood.seudominio.com.br
 - Credenciais MP/Efi por unidade são **cifradas** no banco (`SecretVault`); no formulário deixe o campo vazio para manter o valor atual.
 - Links de motoboy: só hash no banco; o operador vê o URL **uma vez** ao criar/renovar.
 - Cache de cardápio: `CATALOG_CACHE_TTL` (invalida ao editar cardápio no operador).
-- Cron sugerido: `deploy/cron.example` (`payment-sync`, `cleanup-old-data`).
+- Cron sugerido: `deploy/cron.example` (`payment-sync`, `cleanup-old-data`, `worker` se `JOBS_ASYNC=1`).
 - Docroot **somente** `public/`; raiz do repo tem `.htaccess` negando acesso acidental.
 - Permissões de escrita: `storage/`, `storage/cache/`, `public/uploads/`.
 

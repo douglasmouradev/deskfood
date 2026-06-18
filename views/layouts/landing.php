@@ -61,7 +61,7 @@ $jsonLd = [
 <header class="lp-header fixed top-0 left-0 right-0 z-50 border-b border-transparent" x-data="{ navOpen: false }">
     <div class="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-4">
         <a href="/landing" class="flex min-w-0 items-center gap-3">
-            <img src="/assets/img/logo.png" alt="" width="32" height="32" class="h-8 w-auto">
+            <img src="/assets/img/logo.png" alt="<?= htmlspecialchars($appName ?? 'Desk Food') ?>" width="32" height="32" class="h-8 w-auto">
             <span class="hidden font-display text-sm font-semibold tracking-tight text-white sm:inline"><?= htmlspecialchars($appName) ?></span>
         </a>
         <button type="button" class="rounded-lg border border-white/10 p-2 text-zinc-300 hover:bg-white/5 lg:hidden" @click="navOpen = !navOpen" :aria-expanded="navOpen.toString()" aria-controls="nav-landing">
