@@ -46,7 +46,9 @@ final class OperatorAuthController extends Controller
         }
 
         $pdo = Database::pdo();
-        $st = $pdo->prepare('SELECT * FROM admins WHERE email = :e AND is_active = 1 AND deleted_at IS NULL LIMIT 1');
+        $st = $pdo->prepare(
+            'SELECT id, role, unit_id, name, password_hash, must_change_password, totp_enabled FROM admins WHERE email = :e AND is_active = 1 AND deleted_at IS NULL LIMIT 1'
+        );
         $st->execute(['e' => $email]);
         $row = $st->fetch(\PDO::FETCH_ASSOC);
         if ($row === false || ($row['role'] ?? '') !== 'unit_operator' || !password_verify($pass, (string) $row['password_hash'])) {
@@ -69,6 +71,14 @@ final class OperatorAuthController extends Controller
         $_SESSION['admin_name'] = (string) $row['name'];
         $_SESSION['unit_id'] = (int) $row['unit_id'];
         $_SESSION['show_onboarding_operator'] = true;
+        unset($_SESSION['admin_totp_verified']);
+
+        if ((int) ($row['must_change_password'] ?? 0) === 1) {
+            Redirect::to('/operador/senha');
+        }
+        if ((int) ($row['totp_enabled'] ?? 0) === 1) {
+            Redirect::to('/operador/2fa');
+        }
 
         Redirect::to('/operador');
     }

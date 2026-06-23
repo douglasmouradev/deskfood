@@ -273,6 +273,8 @@ Passos resumidos:
 
 ```bash
 cd /var/www/deskfood
+bash bin/deploy-server.sh
+# ou manualmente:
 composer install --no-dev --optimize-autoloader
 npm ci && npm run build
 cp .env.production.example .env   # edite credenciais
@@ -297,6 +299,9 @@ sudo certbot --nginx -d deskfood.seudominio.com.br
 - Cache de cardápio: `CATALOG_CACHE_TTL` (invalida ao editar cardápio no operador).
 - Cron sugerido: `deploy/cron.example` (`payment-sync`, `cleanup-old-data`, `worker` se `JOBS_ASYNC=1`).
 - **Geocodificação:** Google Geocoding API (se `GOOGLE_MAPS_API_KEY`) com cache em `geocode_cache` e fallback Nominatim.
+- **Segurança admin/operador:** troca de senha obrigatória (contas `@deskfood.local` no primeiro acesso) e **2FA TOTP** em `/admin/seguranca` ou `/operador/seguranca`.
+- **Logs:** uma linha JSON por evento em `storage/logs/` (nível via `LOG_LEVEL`).
+- **Deploy servidor:** `bin/deploy-server.sh` (pull, composer, build, migrations, `check-production`).
 - **Deploy CI:** workflow manual `.github/workflows/deploy.yml` (configure secrets `DEPLOY_*`).
 - Docroot **somente** `public/`; raiz do repo tem `.htaccess` negando acesso acidental.
 - Permissões de escrita: `storage/`, `storage/cache/`, `public/uploads/`.

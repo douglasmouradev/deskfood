@@ -33,6 +33,8 @@ final class OperatorDashboardController extends Controller
         $touch = self::maxOrdersTouch($pdo, $unitId);
         $boardRevision = self::lightBoardRevision($pdo, $unitId, $touch);
         $pollMs = max(0, (int) Env::get('OPERATOR_BOARD_POLL_MS', '20000'));
+        $whatsappFlash = $_SESSION['whatsapp_assign_flash'] ?? null;
+        unset($_SESSION['whatsapp_assign_flash']);
 
         $this->view('operator/dashboard', [
             'unit' => $unit,
@@ -42,6 +44,7 @@ final class OperatorDashboardController extends Controller
             'title' => 'Pedidos ao vivo',
             'boardRevision' => $boardRevision,
             'boardPollMs' => $pollMs,
+            'whatsapp_flash' => $whatsappFlash,
         ], 'operator');
     }
 

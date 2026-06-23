@@ -226,6 +226,8 @@ final class Router
             'customer_auth' => \App\Middleware\CustomerAuth::handle(),
             'admin_auth' => \App\Middleware\AdminAuth::handle('super_admin'),
             'operator_auth' => \App\Middleware\AdminAuth::handle('unit_operator'),
+            'admin_session' => \App\Middleware\AdminSession::handle('super_admin'),
+            'operator_session' => \App\Middleware\AdminSession::handle('unit_operator'),
             'any_admin_auth' => \App\Middleware\AdminAuth::handleAny(),
             default => true,
         };

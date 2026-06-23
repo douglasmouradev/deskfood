@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Controllers\AdminAuthController;
+use App\Controllers\AccountSecurityController;
 use App\Controllers\HealthController;
 use App\Controllers\AdminDashboardController;
 use App\Controllers\AdminAuditController;
@@ -95,6 +96,14 @@ return [
     ['methods' => ['GET'], 'path' => '/admin/login', 'handler' => [AdminAuthController::class, 'showLogin']],
     ['methods' => ['POST'], 'path' => '/admin/login', 'handler' => [AdminAuthController::class, 'login']],
     ['methods' => ['POST'], 'path' => '/admin/sair', 'handler' => [AdminAuthController::class, 'logout']],
+    ['methods' => ['GET'], 'path' => '/admin/senha', 'handler' => [AccountSecurityController::class, 'showChangePassword'], 'middleware' => ['admin_session']],
+    ['methods' => ['POST'], 'path' => '/admin/senha', 'handler' => [AccountSecurityController::class, 'saveChangePassword'], 'middleware' => ['admin_session']],
+    ['methods' => ['GET'], 'path' => '/admin/2fa', 'handler' => [AccountSecurityController::class, 'showTotpChallenge'], 'middleware' => ['admin_session']],
+    ['methods' => ['POST'], 'path' => '/admin/2fa', 'handler' => [AccountSecurityController::class, 'verifyTotpChallenge'], 'middleware' => ['admin_session']],
+    ['methods' => ['GET'], 'path' => '/admin/seguranca', 'handler' => [AccountSecurityController::class, 'showSecuritySettings'], 'middleware' => ['admin_auth']],
+    ['methods' => ['POST'], 'path' => '/admin/seguranca/totp/iniciar', 'handler' => [AccountSecurityController::class, 'beginTotpSetup'], 'middleware' => ['admin_auth']],
+    ['methods' => ['POST'], 'path' => '/admin/seguranca/totp/ativar', 'handler' => [AccountSecurityController::class, 'enableTotp'], 'middleware' => ['admin_auth']],
+    ['methods' => ['POST'], 'path' => '/admin/seguranca/totp/desativar', 'handler' => [AccountSecurityController::class, 'disableTotp'], 'middleware' => ['admin_auth']],
 
     ['methods' => ['POST'], 'path' => '/admin/onboarding/dismiss', 'handler' => [OnboardingController::class, 'dismissAdmin'], 'middleware' => ['admin_auth']],
 
@@ -126,6 +135,14 @@ return [
     ['methods' => ['GET'], 'path' => '/operador/login', 'handler' => [OperatorAuthController::class, 'showLogin']],
     ['methods' => ['POST'], 'path' => '/operador/login', 'handler' => [OperatorAuthController::class, 'login']],
     ['methods' => ['POST'], 'path' => '/operador/sair', 'handler' => [OperatorAuthController::class, 'logout']],
+    ['methods' => ['GET'], 'path' => '/operador/senha', 'handler' => [AccountSecurityController::class, 'showChangePassword'], 'middleware' => ['operator_session']],
+    ['methods' => ['POST'], 'path' => '/operador/senha', 'handler' => [AccountSecurityController::class, 'saveChangePassword'], 'middleware' => ['operator_session']],
+    ['methods' => ['GET'], 'path' => '/operador/2fa', 'handler' => [AccountSecurityController::class, 'showTotpChallenge'], 'middleware' => ['operator_session']],
+    ['methods' => ['POST'], 'path' => '/operador/2fa', 'handler' => [AccountSecurityController::class, 'verifyTotpChallenge'], 'middleware' => ['operator_session']],
+    ['methods' => ['GET'], 'path' => '/operador/seguranca', 'handler' => [AccountSecurityController::class, 'showSecuritySettings'], 'middleware' => ['operator_auth']],
+    ['methods' => ['POST'], 'path' => '/operador/seguranca/totp/iniciar', 'handler' => [AccountSecurityController::class, 'beginTotpSetup'], 'middleware' => ['operator_auth']],
+    ['methods' => ['POST'], 'path' => '/operador/seguranca/totp/ativar', 'handler' => [AccountSecurityController::class, 'enableTotp'], 'middleware' => ['operator_auth']],
+    ['methods' => ['POST'], 'path' => '/operador/seguranca/totp/desativar', 'handler' => [AccountSecurityController::class, 'disableTotp'], 'middleware' => ['operator_auth']],
 
     ['methods' => ['POST'], 'path' => '/operador/onboarding/dismiss', 'handler' => [OnboardingController::class, 'dismissOperator'], 'middleware' => ['operator_auth']],
 

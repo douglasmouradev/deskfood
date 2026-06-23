@@ -8,6 +8,7 @@ $navLinks = [
     ['href' => '/operador/motoboys', 'label' => 'Motoboys'],
     ['href' => '/operador/caixa', 'label' => 'Caixa'],
     ['href' => '/operador/relatorios/pedidos.csv', 'label' => 'Pedidos (CSV)'],
+    ['href' => '/operador/seguranca', 'label' => 'Segurança'],
     ['href' => '/ajuda', 'label' => 'Ajuda'],
 ];
 ?>

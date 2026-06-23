@@ -10,6 +10,7 @@ use App\Helpers\Redirect;
 use App\Services\AuditLogService;
 use App\Services\CashRegisterService;
 use App\Services\OrderService;
+use App\Services\WhatsAppLinkService;
 
 /**
  * Ações de mudança de status e atribuição de entregador.
@@ -117,7 +118,8 @@ final class OperatorOrderController extends Controller
 
         $m = $pdo->prepare('SELECT * FROM motoboys WHERE id = :id AND unit_id = :u LIMIT 1');
         $m->execute(['id' => $mid, 'u' => $unitId]);
-        if ($m->fetch() === false) {
+        $motoboy = $m->fetch(\PDO::FETCH_ASSOC);
+        if ($motoboy === false) {
             Redirect::to('/operador');
         }
 
@@ -152,6 +154,21 @@ final class OperatorOrderController extends Controller
         try {
             \App\Services\GeocodingService::ensureOrderCoordinates($id);
         } catch (\Throwable) {
+        }
+
+        $phone = trim((string) ($motoboy['phone'] ?? ''));
+        if ($phone !== '') {
+            $orderNo = (string) ($order['order_number'] ?? $id);
+            $msg = 'Desk Food: nova entrega atribuída — Pedido #' . $orderNo
+                . '. Abra seu painel do entregador para ver o endereço e iniciar a rota.';
+            $waUrl = WhatsAppLinkService::url($phone, $msg);
+            if ($waUrl !== null) {
+                $_SESSION['whatsapp_assign_flash'] = [
+                    'name' => (string) ($motoboy['name'] ?? 'Motoboy'),
+                    'url' => $waUrl,
+                    'order_number' => $orderNo,
+                ];
+            }
         }
 
         Redirect::to('/operador');

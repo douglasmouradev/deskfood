@@ -66,6 +66,16 @@ jobs:
       - name: PHPUnit
         run: composer test
 
+      - name: PHPStan
+        run: composer phpstan
+
+      - name: Smoke HTTP server
+        run: |
+          php -S 127.0.0.1:8765 -t public public/router.php > /tmp/php-server.log 2>&1 &
+          sleep 2
+          curl -fsS http://127.0.0.1:8765/health | grep -q '"ok"'
+          curl -fsS -o /dev/null -w "%{http_code}" http://127.0.0.1:8765/ | grep -q 200
+
       - name: Production config audit
         run: php bin/check-production.php
         env:

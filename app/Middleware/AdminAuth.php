@@ -35,6 +35,7 @@ final class AdminAuth
         }
 
         self::assertAdminStillActive((int) $_SESSION['admin_id']);
+        \App\Middleware\AdminSecurity::enforce();
 
         return true;
     }
@@ -51,6 +52,7 @@ final class AdminAuth
         }
 
         self::assertAdminStillActive((int) $_SESSION['admin_id']);
+        \App\Middleware\AdminSecurity::enforce();
 
         return true;
     }

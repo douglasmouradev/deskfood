@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Database;
+use App\Helpers\GeoHelper;
 
 /**
  * Registro e leitura da posição GPS do entregador durante a rota.
@@ -177,6 +178,11 @@ final class DeliveryLocationService
                 'updated_at' => is_string($locatedAt) ? $locatedAt : null,
                 'stale' => $stale,
             ]);
+            if (is_array($destination) && isset($destination['lat'], $destination['lng'])) {
+                $km = GeoHelper::haversineKm((float) $lat, (float) $lng, (float) $destination['lat'], (float) $destination['lng']);
+                $motoboy['eta_minutes'] = GeoHelper::estimateMinutes($km);
+                $motoboy['distance_km'] = round($km, 1);
+            }
         }
 
         return [

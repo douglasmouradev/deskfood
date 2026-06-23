@@ -38,14 +38,16 @@ final class Logger
 
         $file = $dir . '/app-' . date('Y-m-d') . '.log';
         $rid = defined('REQUEST_ID') ? REQUEST_ID : '-';
-        $line = sprintf(
-            "[%s] [%s] %s %s %s\n",
-            date('c'),
-            $rid,
-            strtoupper($level),
-            $message,
-            $context !== [] ? json_encode(LogSanitizer::context($context), JSON_UNESCAPED_UNICODE) : ''
-        );
+        $record = [
+            'timestamp' => date('c'),
+            'request_id' => $rid,
+            'level' => strtoupper($level),
+            'message' => $message,
+        ];
+        if ($context !== []) {
+            $record['context'] = LogSanitizer::context($context);
+        }
+        $line = json_encode($record, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE) . "\n";
 
         file_put_contents($file, $line, FILE_APPEND | LOCK_EX);
     }

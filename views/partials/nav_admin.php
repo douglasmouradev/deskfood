@@ -8,6 +8,7 @@ $navLinks = [
     ['href' => '/admin/cupons', 'label' => 'Cupons'],
     ['href' => '/admin/relatorios', 'label' => 'Relatórios'],
     ['href' => '/admin/auditoria', 'label' => 'Auditoria'],
+    ['href' => '/admin/seguranca', 'label' => 'Segurança'],
     ['href' => '/ajuda', 'label' => 'Ajuda'],
 ];
 ?>

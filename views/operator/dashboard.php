@@ -6,12 +6,21 @@ declare(strict_types=1);
 /** @var string $csrf */
 /** @var string $boardRevision */
 /** @var int $boardPollMs */
+/** @var array{name?:string,url?:string,order_number?:string}|null $whatsapp_flash */
 
 $boardPollMs = (int) ($boardPollMs ?? 0);
 $boardRevision = (string) ($boardRevision ?? '');
 $activeTotal = count($board['novos']) + count($board['confirmados']) + count($board['em_preparo'])
     + count($board['saiu']) + count($board['pendentes']);
 ?>
+<?php if (!empty($whatsapp_flash['url'])): ?>
+<div class="mt-4 rounded-xl border-2 border-emerald-300 bg-emerald-50 px-4 py-4 text-sm text-emerald-950">
+    <p class="font-semibold">Avisar <?= htmlspecialchars((string) ($whatsapp_flash['name'] ?? 'motoboy')) ?> no WhatsApp</p>
+    <p class="mt-1 text-xs">Pedido #<?= htmlspecialchars((string) ($whatsapp_flash['order_number'] ?? '')) ?> atribuído — envie a mensagem com um clique.</p>
+    <a href="<?= htmlspecialchars((string) $whatsapp_flash['url']) ?>" target="_blank" rel="noopener"
+       class="mt-3 inline-flex rounded-full bg-emerald-700 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-800">Abrir WhatsApp</a>
+</div>
+<?php endif; ?>
 <p class="text-sm text-slate-600">Unidade: <span class="font-semibold text-slate-900"><?= htmlspecialchars((string) ($unit['name'] ?? '')) ?></span></p>
 
 <?php if ($activeTotal === 0): ?>
@@ -50,7 +59,7 @@ $activeTotal = count($board['novos']) + count($board['confirmados']) + count($bo
     function notifyNew() {
         try { new Audio('data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YUtvT19QUk9GSUxFA').play(); } catch (e) {}
         if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-            new Notification('Desk Food', { body: 'Atualização no quadro de pedidos' });
+            new Notification('Desk Food', { body: 'Novo pedido no quadro!' });
         }
     }
     var lastRev = <?= json_encode($boardRevision, JSON_THROW_ON_ERROR) ?>;

@@ -123,7 +123,15 @@ window.dfInitTrackMap = function () {
                     }
                 }
 
-                setMapStatus(m.stale ? 'Última posição há alguns minutos' : 'Atualizado agora');
+                if (m.eta_minutes) {
+                    let eta = '~' + m.eta_minutes + ' min';
+                    if (typeof m.distance_km === 'number') {
+                        eta += ' (' + m.distance_km + ' km)';
+                    }
+                    setMapStatus(m.stale ? 'Última posição há alguns minutos · ' + eta : 'Atualizado agora · chegada ' + eta);
+                } else {
+                    setMapStatus(m.stale ? 'Última posição há alguns minutos' : 'Atualizado agora');
+                }
                 fitBounds();
             } else {
                 setMapStatus('Aguardando GPS do entregador…');
