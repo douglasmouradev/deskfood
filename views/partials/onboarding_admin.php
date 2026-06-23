@@ -8,7 +8,8 @@ $csrf = \App\Helpers\Csrf::token();
             <p class="font-semibold">Boas-vindas ao painel do dono</p>
             <ul class="mt-2 list-inside list-disc space-y-1 text-sky-900/90">
                 <li>Cadastre <strong>unidades</strong> e associe operadores.</li>
-                <li>Revise <strong>APP_URL</strong>, <strong>PIX</strong> e <strong>SMS</strong> no servidor.</li>
+                <li>Antes do go-live rode <code class="rounded bg-sky-100 px-1">php bin/check-production.php</code> no servidor.</li>
+                <li>Revise <strong>APP_URL</strong>, <strong>HTTPS</strong>, <strong>PIX</strong>, <strong>SMS</strong> e <strong>GOOGLE_MAPS_API_KEY</strong>.</li>
                 <li>Consulte a <a class="font-semibold underline" href="/ajuda">central de ajuda</a>.</li>
             </ul>
         </div>

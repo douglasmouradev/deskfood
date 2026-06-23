@@ -40,6 +40,10 @@ $headAlpine = false;
         </div>
         <main class="flex-1 p-4 md:p-6">
             <?php require BASE_PATH . '/views/partials/flash.php'; ?>
+            <?php
+            $production_issues = \App\Services\ProductionConfigService::panelIssues();
+            require BASE_PATH . '/views/partials/production_alerts.php';
+            ?>
             <?php if (!empty($_SESSION['show_onboarding_operator'])): ?>
                 <?php require BASE_PATH . '/views/partials/onboarding_operator.php'; ?>
             <?php endif; ?>

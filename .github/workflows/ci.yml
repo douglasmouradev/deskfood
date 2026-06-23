@@ -65,3 +65,9 @@ jobs:
 
       - name: PHPUnit
         run: composer test
+
+      - name: Production config audit
+        run: php bin/check-production.php
+        env:
+          APP_ENV: local
+          APP_SECRET: ci_test_secret_32_chars_minimum_ok

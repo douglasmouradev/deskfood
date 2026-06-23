@@ -230,12 +230,35 @@ Pedidos em status `pendente` ou `confirmado` (PIX não pago) podem ser cancelado
 
 ## Checklist go-live
 
-1. `cp .env.example .env` — preencher DB, `APP_SECRET`, `APP_URL` (HTTPS), `PIX_PROVIDER` real, credenciais PIX/SMS/e-mail e webhook (ver seções [SMS](#sms-zenvia-em-produção) e [PIX](#pix-em-produção)).
-2. `composer install` e `php install.php` (aplica migrations, inclusive `leads`).
-3. `ALLOW_INSTALL=0` em produção; backups: `chmod +x bin/backup-mysql.sh` e agendar no cron.
-4. `MAIL_DRIVER=smtp` + `NOTIFY_ORDER_EMAIL=1` para avisar novo pedido no e-mail comercial.
-5. `ANALYTICS_GA_ID` (opcional) para GA4 na landing e site público.
-6. Testar `/health`, OTP cliente (Zenvia ou `log`), webhook PIX e painel operador (5 colunas + som).
+1. `cp .env.production.example .env` — preencher DB, `APP_SECRET`, `APP_URL` (HTTPS), `HEALTH_TOKEN`, `PIX_WEBHOOK_SECRET`, `GOOGLE_MAPS_API_KEY`, SMS, PIX, SMTP.
+2. `composer install --no-dev` e `php install.php` (migrations).
+3. `php bin/check-production.php` — deve sair sem **ERROS** (avisos são revisáveis).
+4. `ALLOW_INSTALL=0`; cron em `deploy/cron.example` (backup, cleanup, payment-sync, worker se `JOBS_ASYNC=1`).
+5. Trocar senhas demo do seed; testar OTP, PIX, e-mail, operador, motoboy GPS e mapa.
+6. Monitorar `GET /health` com header `X-Health-Token`; opcional `ERROR_WEBHOOK_URL`.
+
+### Auditoria antes do deploy
+
+```bash
+php bin/check-production.php
+```
+
+Alertas de configuração também aparecem no painel **Dono** e **Operador** quando `APP_ENV=production`.
+
+## Docker (desenvolvimento)
+
+```bash
+docker compose up --build
+# Primeira vez, em outro terminal:
+docker compose exec app composer install
+docker compose exec app php install.php
+```
+
+App em http://localhost:8080 — MySQL na porta 3306.
+
+## Ambiente staging
+
+Recomendado: subdomínio `staging.seudominio.com.br`, banco separado, `APP_ENV=production` com credenciais de sandbox PIX/SMS. Rode os mesmos passos do go-live antes de promover para produção.
 
 ## Deploy (Nginx + PHP-FPM)
 
@@ -273,6 +296,8 @@ sudo certbot --nginx -d deskfood.seudominio.com.br
 - Links de motoboy: só hash no banco; o operador vê o URL **uma vez** ao criar/renovar.
 - Cache de cardápio: `CATALOG_CACHE_TTL` (invalida ao editar cardápio no operador).
 - Cron sugerido: `deploy/cron.example` (`payment-sync`, `cleanup-old-data`, `worker` se `JOBS_ASYNC=1`).
+- **Geocodificação:** Google Geocoding API (se `GOOGLE_MAPS_API_KEY`) com cache em `geocode_cache` e fallback Nominatim.
+- **Deploy CI:** workflow manual `.github/workflows/deploy.yml` (configure secrets `DEPLOY_*`).
 - Docroot **somente** `public/`; raiz do repo tem `.htaccess` negando acesso acidental.
 - Permissões de escrita: `storage/`, `storage/cache/`, `public/uploads/`.
 

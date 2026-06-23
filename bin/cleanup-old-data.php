@@ -106,13 +106,22 @@ try {
 } catch (Throwable) {
 }
 
+$geocodeDeleted = 0;
+try {
+    $st = $pdo->prepare('DELETE FROM geocode_cache WHERE created_at < :s');
+    $st->execute(['s' => $since]);
+    $geocodeDeleted = $st->rowCount();
+} catch (Throwable) {
+}
+
 echo sprintf(
-    "Cleanup OK: login_attempts=%d, otp_codes=%d, sessions=%d, pix_transactions=%d, webhook_payloads=%d, delivery_locations=%d, log_files=%d\n",
+    "Cleanup OK: login_attempts=%d, otp_codes=%d, sessions=%d, pix_transactions=%d, webhook_payloads=%d, delivery_locations=%d, geocode_cache=%d, log_files=%d\n",
     $loginDeleted,
     $otpDeleted,
     $sessionsDeleted,
     $pixDeleted,
     $webhookCleared,
     $locationsDeleted,
+    $geocodeDeleted,
     $logsDeleted
 );
